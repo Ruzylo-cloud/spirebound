@@ -79,6 +79,12 @@ h1,h2,h3{font-weight:800;letter-spacing:.02em}
 .slotchip{flex:0 0 auto;display:flex;align-items:center;height:46px;padding:0 8px;border-radius:var(--rad-s);background:var(--plate);border:1px solid var(--line);font-size:10px;font-weight:800;letter-spacing:.05em;color:var(--ink2)}
 .tbtn.buyslot{border-style:dashed;border-color:var(--line2)}
 .tbtn.buyslot .bsl{font-size:9px;font-weight:900;letter-spacing:.06em;color:var(--acc)}
+.tbtn.forged{border-color:var(--gold);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 8px color-mix(in srgb,var(--gold) 35%,transparent)}
+.spine{display:flex;gap:2px;margin-top:3px}
+.spine .pip{width:9px;height:4px;border-radius:2px;background:var(--line)}
+.spine .pip.on{background:var(--acc)}
+.spine .pip.gap{margin-left:6px}
+.pill.gold{color:var(--gilt);border-color:var(--gold)}
 .tbtn{flex:0 0 auto;width:46px;height:46px;border-radius:var(--rad-s);background:var(--plate);border:1px solid var(--line);
   position:relative;display:flex;align-items:center;justify-content:center;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 2px 8px #0006} /* shared 3-layer depth recipe */
@@ -124,11 +130,15 @@ h1,h2,h3{font-weight:800;letter-spacing:.02em}
 .tprow .tpinfo b{display:block;font-size:11.5px;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tprow .tpinfo .tpt{display:block;font-size:8px;letter-spacing:.09em;color:var(--ink3);font-weight:800}
 .tprow.locked{opacity:.6}
-.tpips{display:flex;gap:6px;flex:0 0 auto;padding:0 2px}
+.tpips{display:flex;gap:4px;flex:0 0 auto;padding:0 2px}
 .pip{width:10px;height:10px;transform:rotate(45deg);border-radius:2.5px;border:1.5px solid var(--line2);background:transparent}
 .pip.own{background:linear-gradient(135deg,var(--acc),var(--acc2));border-color:transparent;box-shadow:0 0 6px color-mix(in srgb,var(--acc) 45%,transparent)}
 .pip.next{border-color:var(--acc)}
 .pip.ult.own{box-shadow:0 0 9px color-mix(in srgb,var(--acc2) 70%,transparent)}
+.pipg{width:18px;height:18px;display:block;flex:0 0 auto}/* effect-glyph tier tiles (path §4) — art carries state, CSS only sizes */
+.pipg img{display:block;width:18px;height:18px}
+@media (max-width:430px){/* 390-class: reclaim row width so BUY never clips (18px bake downscales crisp at 2x DPR) */
+.pipg,.pipg img{width:15px;height:15px}.tpips{gap:3px}.tprow{gap:6px}.tpbuy{min-width:72px}}
 .tpbuy{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:88px;min-height:32px;
   border-radius:9px;border:1px solid var(--line2);background:linear-gradient(180deg,var(--panel2),var(--bg3));padding:3px 10px}
 .tpbuy b{font-size:9px;letter-spacing:.09em}
@@ -296,6 +306,7 @@ h1,h2,h3{font-weight:800;letter-spacing:.02em}
 #placeHint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 122px);z-index:23;background:var(--plate);border:1px solid var(--acc);
   border-radius:12px;padding:8px 16px;font-size:12px;font-weight:700;display:none;box-shadow:0 2px 8px #0006}
 #placeHint.on{display:block}
+body:has(#sheet.on) #placeHint{display:none} /* coach hint yields while a sheet/panel is open (390 judge note 07-09) — re-shows on close */
 #modeFly{position:absolute;pointer-events:none;left:50%;top:38%;transform:translate(-50%,-50%);z-index:24;font-size:26px;font-weight:900;
   letter-spacing:.1em;opacity:0;text-shadow:0 0 24px currentColor}
 .reduceMotion *{animation-duration:.001s!important;transition-duration:.001s!important}
@@ -1346,7 +1357,12 @@ G.D.balance = {
   spirePath: {base:80,  g:1.065, max:99, cur:'mana'},
   ultTrack:  {base:3,   g:1.07,  max:99, cur:'cores'},
   ratchet:   {upBaseMul:.9, g:1.12},
-  slots:     {base:400, g:2.4, start:5, max:15, cur:'mana'}              // TOWER SLOTS: 10 buys, steep — the fewer-towers hard cap
+  slots:     {base:400, g:2.4, start:5, max:15, cur:'mana'},             // TOWER SLOTS: 10 buys, steep — the fewer-towers hard cap
+  mastery:   {base:40, g:1.9, nodes:12, gates:[0,1,10], tiers:[1,3,5], instaCap:3}
+  /* MASTERY SPINE (deep-dive §2/§4 + DESIGN-FINAL-RUN item 4): 12 finite Cores nodes per tower in
+     4/4/4 chapters (33/66/100%). Ch I sums ≈536 cores (1-2 runs on a main). Ch III ≈92% of total.
+     gates = boss-kills needed to buy INTO ch 1/2/3. tiers = pre-built route tier at ch 1/2/3.
+     instaCap = max distinct 100% types per run that open at T5 (BTD6 insta contract). */
 };
 /* ================= 1. CODEX — 5 books, permanent Mana, raises run STARTING baselines ============ */
 const CL = (id,nm,per,k,cap) => ({id,nm,per,k,cap});
@@ -1391,8 +1407,77 @@ G.D.ults = [
  {id:'gravity',nm:'Gravity Well Barrage',cd:30,role:'denial',el:'nature',d:'3 slowing damage wells on the track',fx:{wells:{n:3,r:70,slow:.35,dps:.8,t:8}}},
  {id:'judgment',nm:'Astral Judgment',cd:75,role:'finisher',el:'storm',d:'Channel → anti-boss pillar',fx:{pillar:{p:6,vsBoss:.8,channel:1.5},key:{divineSyncPerUlt:.1,window:2}}}
 ];
-G.D.ultUp = {shardCost: n => Math.ceil(3 * Math.pow(1.6, n)), perLevel:.12, cdEvery5:.05, maxSlots:5};
+G.D.ultUp = {shardCost: n => Math.ceil(3 * Math.pow(1.07, n)), perLevel:.04, cdPerLvl:.4, cdFloor:.5, maxSlots:3, unlockCost:150}; // §6b 1-99 curve (3·1.07^n, −0.4s CD/lvl floor 50%, +4% mag) + §4 unlock sink; ~3 equipped
 G.D.syncBurst = ['warp','nova','singularity','meteor','chainstorm','judgment']; // the taught skill-ceiling chain
+/* ================= 2b. HEROES (DESIGN-FINAL-RUN 8, BALANCE §6a) — one per run, auto-levels 1→20,
+   ability spikes at 3/7/12/20 (minor/mid/major/signature). fx folds: d=tower dmg, crit=crit chance,
+   ess=Essence gain, wisp=wisp value, dr=Spire DR, regen=ward regen; proc = L20 signature (heroTick).
+   Roster: 3 launch + 1 season-pass capstone + 2 event shop + 2 guild shop + 2 store (shard purchase
+   wiring lands with the ⑦ currency pass — locked rows carry their source till then). =============== */
+G.D.heroes = {
+ system:{xpKill:1, xpWave:10, need:L=>40*Math.pow(1.35,L-1), spikeAt:[3,7,12,20], maxLvl:20},
+ list:[
+  {id:'aurelia',nm:'Aurelia Dawnblade',el:'storm',role:'VANGUARD',src:'launch',emoji:'⟠',
+   d:'Blade of the first light — every tower cuts deeper.',
+   spikes:[{at:3,fx:{d:.08},d:'+8% tower damage'},
+           {at:7,fx:{d:.15,crit:.04},d:'+15% damage · +4% crit'},
+           {at:12,fx:{d:.25,crit:.08},d:'+25% damage · +8% crit'},
+           {at:20,fx:{d:.35,crit:.12,proc:'stormcall'},d:'+35% dmg · STORMCALL: skybolt every 5s'}]},
+  {id:'maren',nm:'Maren Tidewell',el:'nature',role:'PROVISIONER',src:'launch',emoji:'❂',
+   d:'Keeper of the golden tide — the economy is her weapon.',
+   spikes:[{at:3,fx:{ess:.10},d:'+10% Essence gain'},
+           {at:7,fx:{ess:.18,wisp:.25},d:'+18% Essence · wisps +25% richer'},
+           {at:12,fx:{ess:.30,wisp:.5},d:'+30% Essence · wisps +50%'},
+           {at:20,fx:{ess:.40,wisp:.75,proc:'goldentide'},d:'+40% Essence · GOLDEN TIDE: income surge every 12s'}]},
+  {id:'bastion',nm:'Bastion Veyr',el:'ice',role:'WARDEN',src:'launch',emoji:'⛨',
+   d:'The wall that walks — the Spire does not fall on his watch.',
+   spikes:[{at:3,fx:{dr:.05},d:'+5% Spire damage reduction'},
+           {at:7,fx:{dr:.10,regen:.25},d:'+10% DR · +25% ward regen'},
+           {at:12,fx:{dr:.16,regen:.5},d:'+16% DR · +50% ward regen'},
+           {at:20,fx:{dr:.22,regen:.75,proc:'unbreakable'},d:'+22% DR · UNBREAKABLE: ward surge every 15s'}]},
+  {id:'kyrie',nm:'Seraph Kyrie',el:'arcane',role:'ASCENDANT',src:'pass',emoji:'✧',
+   d:'Season capstone — balance of blade and tide.',
+   spikes:[{at:3,fx:{d:.05,ess:.05},d:'+5% damage · +5% Essence'},
+           {at:7,fx:{d:.10,ess:.10},d:'+10% damage · +10% Essence'},
+           {at:12,fx:{d:.16,ess:.16,crit:.05},d:'+16% both · +5% crit'},
+           {at:20,fx:{d:.22,ess:.22,crit:.08,proc:'stormcall'},d:'+22% both · STORMCALL signature'}]},
+  {id:'embra',nm:'Embra Ashvow',el:'fire',role:'IMMOLATOR',src:'event',emoji:'♦',
+   d:'Event exclusive — burn economy: damage feeds the coffers.',
+   spikes:[{at:3,fx:{d:.06,ess:.04},d:'+6% dmg · +4% Essence'},
+           {at:7,fx:{d:.12,ess:.08},d:'+12% dmg · +8% Essence'},
+           {at:12,fx:{d:.20,ess:.14},d:'+20% dmg · +14% Essence'},
+           {at:20,fx:{d:.28,ess:.20,proc:'goldentide'},d:'+28% dmg · GOLDEN TIDE signature'}]},
+  {id:'voltra',nm:'Voltra Kess',el:'storm',role:'STORMCALLER',src:'event',emoji:'⚡',
+   d:'Event exclusive — crit storms, all tempo.',
+   spikes:[{at:3,fx:{crit:.05},d:'+5% crit'},
+           {at:7,fx:{crit:.09,d:.08},d:'+9% crit · +8% dmg'},
+           {at:12,fx:{crit:.14,d:.14},d:'+14% crit · +14% dmg'},
+           {at:20,fx:{crit:.20,d:.20,proc:'stormcall'},d:'+20% crit · STORMCALL signature'}]},
+  {id:'thorne',nm:'Thorne Duskmantle',el:'void',role:'SENTINEL',src:'guild',emoji:'◆',
+   d:'Guild exclusive — the ward-and-blade hybrid.',
+   spikes:[{at:3,fx:{dr:.04,d:.04},d:'+4% DR · +4% dmg'},
+           {at:7,fx:{dr:.08,d:.08},d:'+8% DR · +8% dmg'},
+           {at:12,fx:{dr:.12,d:.14,regen:.25},d:'+12% DR · +14% dmg · +25% regen'},
+           {at:20,fx:{dr:.16,d:.20,regen:.5,proc:'unbreakable'},d:'UNBREAKABLE signature'}]},
+  {id:'lyra',nm:'Lyra Meadowlight',el:'nature',role:'HARVESTER',src:'guild',emoji:'✿',
+   d:'Guild exclusive — wisps love her.',
+   spikes:[{at:3,fx:{wisp:.3},d:'wisps +30% richer'},
+           {at:7,fx:{wisp:.6,ess:.08},d:'wisps +60% · +8% Essence'},
+           {at:12,fx:{wisp:1,ess:.15},d:'wisps +100% · +15% Essence'},
+           {at:20,fx:{wisp:1.5,ess:.25,proc:'goldentide'},d:'wisps +150% · GOLDEN TIDE signature'}]},
+  {id:'nyx',nm:'Nyx Vantari',el:'void',role:'REAPER',src:'shop',emoji:'☽',
+   d:'Store hero — pure edge, no safety net.',
+   spikes:[{at:3,fx:{d:.10},d:'+10% tower damage'},
+           {at:7,fx:{d:.18},d:'+18% tower damage'},
+           {at:12,fx:{d:.30},d:'+30% tower damage'},
+           {at:20,fx:{d:.45,proc:'stormcall'},d:'+45% dmg · STORMCALL signature'}]},
+  {id:'solen',nm:'Solen Marchwarden',el:'fire',role:'BULWARK',src:'shop',emoji:'⬟',
+   d:'Store hero — the patient wall with a furnace heart.',
+   spikes:[{at:3,fx:{dr:.06},d:'+6% Spire DR'},
+           {at:7,fx:{dr:.10,d:.06},d:'+10% DR · +6% dmg'},
+           {at:12,fx:{dr:.15,d:.12,regen:.3},d:'+15% DR · +12% dmg · +30% regen'},
+           {at:20,fx:{dr:.20,d:.18,regen:.6,proc:'unbreakable'},d:'UNBREAKABLE signature'}]}
+ ]};
 /* ================= 3. RUNES — 6 slots, pity + determinism (anti-gacha contract) ================ */
 G.D.runes = {
   slots:[{id:'sigil',nm:'Sigil',main:'dmg'},{id:'focus',nm:'Focus',main:'rate'},{id:'lens',nm:'Lens',main:'critC'},
@@ -1836,14 +1921,16 @@ G.D.modes = {idle:{nm:'Idle',mult:1,combo:0,emoji:'😴'},balanced:{nm:'Balanced
 G.newState = () => ({
   v:1, mana:BN.Z(), manaLife:BN.Z(), cores:{}, shards:0, prisms:340, dust:0, glyphShards:0,
   relics:BN.Z(), aether:0, continuum:0, medals:0, ordealMarks:0,
-  codex:{}, foundry:{}, leylines:{}, foundations:{}, perm:{fam:{},slots:0},
-  ults:{nova:{lvl:0,auto:0}}, slotted:['nova'],
+  codex:{}, foundry:{}, mastery:{}, masteryPath:{}, leylines:{}, foundations:{}, perm:{fam:{},slots:0},
+  ults:{nova:{lvl:0,auto:0,un:1},chainstorm:{lvl:0,auto:0,un:1},meteor:{lvl:0,auto:0,un:1}}, slotted:['nova'], // 3 ults free; rest unlock @150 Cores (§4 sink)
+  heroes:{owned:{aurelia:1,maren:1,bastion:1},picked:'aurelia'},        // HERO roster (item 8): 3 launch heroes; rest acquire via pass/event/guild/store
+  evTokens:0, guildCr:0, guildTech:{},                                  // §4 currencies 4+5: Event Tokens · Guild Credits (+capped guild tech)
   runes:{equipped:{},inv:[],pity:{epic:0,legendary:0,mythic:0}},
   glyphs:{owned:{},equipped:[]},
   familiars:{owned:{hootle:{lvl:1,axp:0,awaken:0}},bound:'hootle',support:[],dust:0},
   prestige:{ascensions:0,transcendences:0,convergences:0},
   relicTree:{}, aetherTree:{},
-  tiers:{unlocked:1,best:{},bestHard:{},cleared:{}},
+  tiers:{unlocked:1,best:{},bestHard:{},cleared:{},raid:{}},
   acct:{lvl:1,xp:0}, killsLife:BN.Z(), wispsLife:0,
   opt:{mode:'balanced',theme:'aurora',notation:'letters',quality:'auto',reduceMotion:0,rmTouched:0,stackConfirm:'dialog'},
   time:{maxDateReached:0,lastSeen:0,install:0},
@@ -1868,6 +1955,8 @@ G.acctMods = S => {
     codexGlobal:1};
   D().leylines.lines.forEach(l=>{const lv=S.leylines[l.id]|0; if(!lv)return;
     if(l.k==='gameSpeed')m.gameSpeed+=lv*l.per; if(l.k==='offlineCapH')m.offlineCapH=Math.min(l.max||32,8+lv*l.per);});
+  if(S.guildTech){m.manaGain*=1+.05*Math.min(4,S.guildTech.mana|0);     // §4 guild tech: capped account buffs, never combat power
+    m.offlineCapH=Math.min(32,m.offlineCapH+.5*Math.min(2,S.guildTech.off|0));}
   const tlv=(o,id)=>((o&&o[id])|0);                                  // prestige trees (§M) — data: D().prestige
   const relics=S.prestige.ascensions?1+tlv(S.relicTree,'cxglobal')*.04:1;
   m.codexGlobal=relics; m.dmg*=relics;
@@ -1934,13 +2023,15 @@ const lanePos = (lane,dist) => { const {pts,cum}=lane; if(dist<=0)return{x:pts[0
 G.sim = {};
 G.sim.newRun = (S, tier, mapIdx, opts) => {
   opts=opts||{};
+  if(opts.raid){ const cl=(S.tiers&&S.tiers.cleared)||{};                // RAID gate (DESIGN-FINAL-RUN 5): 3/3 R100 proofs before the tier raid opens
+    if(![0,1,2].every(i=>cl[tier+'_'+i])) return null; }
   const ti=D().tiers[tier-1], map=ti.maps[mapIdx||0];
   const seed=opts.seed!=null?opts.seed:((Math.random()*2**31)|0);
   const lay=D().genMap(map,seed,tier), lanes=buildLanes(lay);
   const M=G.acctMods(S);
   const sb=D().spire.base;
   const R = {
-    tier, mapIdx:mapIdx||0, map, seed, lay, lanes, hard:!!opts.hard, restricted:!!opts.restricted,
+    tier, mapIdx:mapIdx||0, map, seed, lay, lanes, hard:!!opts.hard, restricted:!!opts.restricted, raid:opts.raid?1:0,
     round:0, phase:'idle', t:0, roundT:0,
     essence:BN.mulN(BN.from(20),M.startEss*(opts.startEss||1)), kills:0, killsRound:0, leaks:0,
     spire:{hpMax:BN.mulN(BN.from(sb.hp),M.spireHp), hp:null, wardMax:BN.mulN(BN.from(sb.ward),M.wardHp), // §2d: ×100 display-scale dropped — pool 120/60 makes the leak %s REAL
@@ -1956,13 +2047,19 @@ G.sim.newRun = (S, tier, mapIdx, opts) => {
   R.spire.hp=BN.clone(R.spire.hpMax); R.spire.ward=BN.clone(R.spire.wardMax);
   R.spire.d=BN.mulN(BN.from(sb.d),R.mods.spireDmg);
   D().ults.forEach(u=>{R.ults[u.id]={cd:0,ready:1}});
+  const hid=(!R.restricted&&S.heroes&&S.heroes.picked)||null;           // HERO (item 8): one per run; restricted = none (wallet-immune law)
+  const hd=hid&&(S.heroes.owned||{})[hid]&&D().heroes.list.find(x=>x.id===hid);
+  R.hero=hd?{id:hd.id,lvl:1,xp:0}:null; R.heroFx={};
   /* exposure canon per archetype: spawn speed scales by laneLen/archLen so seeded waypoint growth
      never drifts the LOCKED HP curves (keystone contract in 04-data-maps pathLenPx) */
   R.archLen=({longexp:1250,spiral:1100,maze:1150,branch:950,choke:750,multi:900})[map.arch]||900;
-  if(R.mods.startRound&&!R.hard&&!R.restricted)R.round=Math.min(40,R.mods.startRound|0); // Headway relic
+  if(R.mods.startRound&&!R.hard&&!R.restricted&&!R.raid)R.round=Math.min(40,R.mods.startRound|0); // Headway relic
+  if(R.raid)R.round=109;                                                // RAID anchor: sig-boss + waves pitched at R110 of this tier — punishing on-level, afkable over-progressed
   if(opts.daily)R.daily=opts.daily;                                     // {idx,ids:[modIds],goal} — enforced below
   try{ if(G.liveops&&G.liveops.activeEvents){const ev=G.liveops.activeEvents(S).find(e=>e.live);
     if(ev)R.eventLive=ev;} }catch(e){}                                  // LIVE event window: +15% essence drops
+  if(!R.restricted&&S.liveops){ if(S.liveops.evBuff){R.mods.essGain*=1.15;S.liveops.evBuff=0;}   // §4 consumable run-buffs (event/guild shops) — one run, then spent
+    if(S.liveops.gldBuff){R.mods.dmg*=1.1;S.liveops.gldBuff=0;} }
   G.S=S; G.R=R;
   return R;
 };
@@ -1983,9 +2080,9 @@ G.sim.towerStats = (R, t) => {
   let perEl=1; if(M.gfx&&M.gfx.perElement){ const els={}; R.towers.forEach(t2=>els[t2.tw.el]=1);
     perEl=1+M.gfx.perElement*Object.keys(els).length; }                 // glyph: per distinct element
   const sMul=Math.sqrt(t.st||1);                                        // STACKING: merged towers deliver ×st dps, split √impact·√timing
-  t.dmg=BN.mulN(BN.from(dBase*lvMul),M.dmg*perEl*sMul*(1+(t._auraD||0))*(t.buff&&R.t<t.buffUntil?1+t.buff:1));
+  t.dmg=BN.mulN(BN.from(dBase*lvMul),M.dmg*perEl*sMul*(1+((R.heroFx&&R.heroFx.d)||0))*(1+(t._auraD||0))*(t.buff&&R.t<t.buffUntil?1+t.buff:1)); // hero VANGUARD spikes
   t.rt=rt*sMul*(t.rtBuff&&R.t<t.rtBuffUntil?1+t.rtBuff:1); t.rg=rg; t.fx=st.acc; t.pierce=st.pierce+(st.acc.pierce||0);
-  t.critC=Math.min(.8,(tw.b.crit?tw.b.crit.c:0)+(st.acc.crit?st.acc.crit.c||0:0)+M.critC);
+  t.critC=Math.min(.8,(tw.b.crit?tw.b.crit.c:0)+(st.acc.crit?st.acc.crit.c||0:0)+M.critC+((R.heroFx&&R.heroFx.crit)||0));
   t.critD=M.critD+(st.acc.crit?st.acc.crit.d||0:0);
   return t;
 };
@@ -2000,6 +2097,12 @@ G.sim.place = (R, twId, x, y, route) => {
   R.essence=BN.sub(R.essence,cost);
   const t={tw,x,y,route:route||[0,0,0],upLvl:0,cd:0,id:R.towers.length,spent:BN.clone(cost),st:1};
   if(R.typeLvl&&R.typeLvl[tw.id]==null){R.typeLvl[tw.id]=(R.permFam&&R.permFam[tw.fam])|0;R.typeBuys[tw.id]=0;} // RATCHET: perm lvl = starting lvl
+  if(!route&&!R.restricted){ const B=D().balance.mastery, ch=G.sim.masteryCh(G.S,tw.id);   // MASTERY pre-build: opens on the committed path (free — the permanent floor)
+    if(ch>0){ let tier=B.tiers[ch-1];
+      if(ch>=3){ R.instaUsed=R.instaUsed||{};                            // insta contract: T5 once per 100% type, ≤instaCap types/run; repeats open at ch-2 tier
+        if(R.instaUsed[tw.id]||Object.keys(R.instaUsed).length>=B.instaCap) tier=B.tiers[1];
+        else R.instaUsed[tw.id]=1; }
+      t.route[(G.S.masteryPath&&G.S.masteryPath[tw.id])|0]=tier; } }
   R.towers.push(t); G.sim.towerStats(R,t); G.bus.emit('place',t);
   return t;
 };
@@ -2088,7 +2191,7 @@ const spawn = (R,id,laneI,isChild) => { const row=D().enemyById[id];
   R.enemies.push(e); return e;
 };
 /* ================= damage pipeline (BN) ================= */
-const spDR = R => Math.min(.9,(R.mods.spireDR||0)+(R.twDR||0));          // codex + Sanctum-class towers
+const spDR = R => Math.min(.9,(R.mods.spireDR||0)+(R.twDR||0)+((R.heroFx&&R.heroFx.dr)||0)); // codex + Sanctum-class towers + hero WARDEN spikes
 const dmgTo = (R,e,raw,src) => { // src {el, heavy, dot, ult, tower}
   if(!e.alive) return BN.Z();
   const row=e.d;
@@ -2127,6 +2230,7 @@ const dmgTo = (R,e,raw,src) => { // src {el, heavy, dot, ult, tower}
 };
 const kill = (R,e,src) => { if(!e.alive)return; e.alive=0; R.kills++; R.killsRound++;
   G.S.killsLife=BN.add(G.S.killsLife,BN.ONE());
+  if(R.hero)G.sim.heroXP(R,D().heroes.system.xpKill);                    // hero arc: +1 XP per kill (§6a)
   const row=e.d;
   if(src&&src.tower){const ek=G.S.stats.elKills=G.S.stats.elKills||{};ek[src.tower.tw.el]=(ek[src.tower.tw.el]|0)+1;}
   const gfx=R.mods.gfx;                                                  // glyph: death bursts
@@ -2139,11 +2243,11 @@ const kill = (R,e,src) => { if(!e.alive)return; e.alive=0; R.kills++; R.killsRou
     if(sv) queryR(R,e.x,e.y,70).forEach(o=>{ if(o.alive&&o!==e) o.st[sk]={dps:sv.dps,t:sv.t,el:sv.el}; }); }
   const share=BN.mulN(R._rw,(BN.ratio(e.maxhp,R._waveHp)||.02)*.7*(e.elite?3:1));
   const gain=BN.mul(share,R.combo);
-  R.essence=BN.add(R.essence,BN.mulN(gain,R.mods.essGain*G.D.modes[R.mode].mult*(R.eventLive?1.15:1)));
+  R.essence=BN.add(R.essence,BN.mulN(gain,R.mods.essGain*G.D.modes[R.mode].mult*(R.eventLive?1.15:1)*(1+((R.heroFx&&R.heroFx.ess)||0)))); // hero PROVISIONER spikes
   const cshare=G.D.modes[R.mode].combo; if(cshare>0){R.comboK++;
     R.combo=BN.powN(1+.0003*(G.S.prestige.ascensions+1)*cshare,R.comboK);}
   if(e.elite){G.S.prisms+=1+((R.tier/4)|0); if(G.chance(.3)){G.S.shards++;G.S.stats.shardsLife=(G.S.stats.shardsLife|0)+1;}}
-  const cores=(G.S.cores[src&&src.tower?src.tower.tw.id:'spire']||0)+1;
+  const cores=(G.S.cores[src&&src.tower?src.tower.tw.id:'spire']||0)+(R.mods.coreGain||1); // ×coreGain (codex eco + aether coreflow) — was a dead +1 flat
   G.S.cores[src&&src.tower?src.tower.tw.id:'spire']=cores;
   if(BN.gte(R.stats.dmg,BN.mulN(e.maxhp,3))) R.stats.overkills++;
   G.bus.emit('kill',{e,src});
@@ -2278,7 +2382,7 @@ const towerTick = (R,t,dt) => { t.cd-=dt; if(t.cd>0)return;
   G.bus.emit('shot',{t,tgt,crit,dealt});
 };
 const spireTick = (R,dt) => { const sp=R.spire; sp.cd-=dt;
-  if(R.t-(sp.lastHit||-9)>3) sp.ward=BN.min(sp.wardMax,BN.add(sp.ward,BN.mulN(sp.wardMax,.10*dt*(1+(R.twWard||0))))); // §2d: 10%/s (≈6/s base) after 3s quiet; Aegis Beacon boosts
+  if(R.t-(sp.lastHit||-9)>3) sp.ward=BN.min(sp.wardMax,BN.add(sp.ward,BN.mulN(sp.wardMax,.10*dt*(1+(R.twWard||0))*(1+((R.heroFx&&R.heroFx.regen)||0))))); // §2d: 10%/s after 3s quiet; Aegis Beacon + hero regen spikes
   sp.hp=BN.min(sp.hpMax,BN.add(sp.hp,BN.mulN(sp.hpMax,sp.regen*.001*dt)));
   const cx=R.lay.spire.x,cy=R.lay.spire.y;
   if(!sp.lvl.barrage){ // §6c LEVEL-0 = PASSIVE AOE PULSE: sp.d dps to ALL in range (clears early trash, never scales)
@@ -2298,8 +2402,8 @@ const spireTick = (R,dt) => { const sp=R.spire; sp.cd-=dt;
 G.sim.castUlt = (R,id) => { const u=D().ults.find(u=>u.id===id), st=R.ults[id];
   if(!u||!st||st.cd>0||R.over)return false;
   const lvl=(G.S.ults[id]&&G.S.ults[id].lvl)|0,
-        pw=(1+lvl*D().ultUp.perLevel+(R.mods.ultDmg||0)+(R.twUltPow||0))*(R.mods.ultGlobal||1);
-  st.cd=u.cd*Math.pow(1-D().ultUp.cdEvery5,(lvl/5)|0)*(R.mods.ultCd||1)*(R.twUltCd||1);
+        pw=(1+lvl*D().ultUp.perLevel+(R.mods.ultDmg||0)+(R.twUltPow||0))*(R.mods.ultGlobal||1); // §6b: +4%/lvl magnitude
+  st.cd=Math.max(u.cd*D().ultUp.cdFloor,u.cd-D().ultUp.cdPerLvl*lvl)*(R.mods.ultCd||1)*(R.twUltCd||1); // §6b: −0.4s/lvl, floor 50% of base
   const cx=R.lay.spire.x,cy=R.lay.spire.y,f=u.fx;
   const base=BN.mulN(R.spire.d,8*pw);
   const ctrlOk=e=>!(e.d&&e.d.fx&&e.d.fx.ctrlUltImmune);
@@ -2335,7 +2439,7 @@ const ultTick = (R,dt) => { for(const id in R.ults){const st=R.ults[id]; if(st.c
 };
 /* ================= boss engine ================= */
 G.sim.spawnBoss = (R) => { const r=R.round, ti=D().tiers[R.tier-1];
-  const sig=(r%50===0); const b=sig?D().bosses[(R.tier-1)%12]:D().bossById.ancientdragon;
+  const sig=(r%50===0)||!!R.raid; const b=sig?D().bosses[(R.tier-1)%12]:D().bossById.ancientdragon; // raid = the tier's SIGNATURE boss, always
   const hpL=C.hpLog10(r,R.tier,1)+(R.hard?Math.log10(C.hard.hp):0)
            +(R.daily&&(R.daily.ids||[]).includes('boss3x')?Math.log10(3):0);
   R._bossHurt=0;                                                         // 'Untouched' achievement window
@@ -2442,29 +2546,56 @@ const bossTick = (R,dt) => { const b=R.boss; if(!b||!b.alive)return;
     if(b.dist>=lane.len){b.alive=0;leakBoss(R,b);}}
   if(b.slowT>0){b.slowT-=dt;if(b.slowT<=0)b.slow=0;}
   if(BN.isZ(b.hp)&&b.alive){b.alive=0;R.stats.bossKills++;G.S.stats.bosses++;
-    const sh=2+(R.tier>>2); G.S.shards+=sh; G.S.stats.shardsLife=(G.S.stats.shardsLife|0)+sh;
+    const sh=Math.max(1,Math.round(R.round/10))+(R.tier-1);             // §4 Ultimate Cores: boss #k drops k+(T-1) — w10 T1→1, w100 T1→10 (spec's own anchors; its ceil(.5k) draft missed them)
+    G.S.shards+=sh; G.S.stats.shardsLife=(G.S.stats.shardsLife|0)+sh;
     G.S.dust=(G.S.dust|0)+3;                                            // rune dust faucet
     if(b.def.id==='elderdragon')G.S.stats.dragon=1;
     if(!R._bossHurt)G.S.stats.zerodmg=1;                                 // Untouched
     if(R.round%50===0&&G.liveops&&G.liveops.passGain)G.liveops.passGain(1);
-    G.bus.emit('bossKill',b);}
+    G.bus.emit('bossKill',b);
+    if(R.raid)G.sim.endRun(R,'raidclear');}                             // RAID: the boss IS the objective — kill ends the encounter
 };
 const leakBoss = (R,b) => { let d=BN.mulN(b.maxhp,.4*(1-spDR(R))); R.spire.lastHit=R.t;
   if(BN.gte(R.spire.ward,d))R.spire.ward=BN.sub(R.spire.ward,d);
   else{d=BN.sub(d,R.spire.ward);R.spire.ward=BN.Z();R.spire.hp=BN.sub(R.spire.hp,d);}
   if(BN.isZ(R.spire.hp))G.sim.endRun(R,'death'); };
+/* ================= hero engine (DESIGN-FINAL-RUN 8, BALANCE §6a) =================
+   auto-levels 1→20 in-run: +1 XP/kill, +10·wave per clear, need 40·1.35^(L-1);
+   spikes 3/7/12/20 fold R.heroFx (authored values are ABSOLUTE per tier — later replaces earlier). */
+const heroDef = R => R.hero&&D().heroes.list.find(x=>x.id===R.hero.id);
+const applyHeroFx = R => { const hdef=heroDef(R); const fx={};
+  if(hdef)hdef.spikes.forEach(s=>{ if(R.hero.lvl>=s.at)for(const k in s.fx)fx[k]=s.fx[k]; });
+  const dmgChanged=(fx.d||0)!==(R.heroFx.d||0)||(fx.crit||0)!==(R.heroFx.crit||0);
+  R.heroFx=fx; if(dmgChanged)R.towers.forEach(t=>G.sim.towerStats(R,t)); };
+G.sim.heroXP = (R,n) => { const h=R.hero; if(!h)return; const sys=D().heroes.system;
+  if(h.lvl>=sys.maxLvl)return; h.xp+=n;
+  while(h.lvl<sys.maxLvl&&h.xp>=sys.need(h.lvl)){ h.xp-=sys.need(h.lvl); h.lvl++;
+    if(sys.spikeAt.includes(h.lvl)){ applyHeroFx(R); G.bus.emit('heroSpike',{id:h.id,lvl:h.lvl}); } } };
+const heroTick = (R,dt) => { const h=R.hero; if(!h||!R.heroFx.proc)return;
+  R._heroT=(R._heroT||0)+dt; const p=R.heroFx.proc;
+  if(p==='stormcall'&&R._heroT>=5){ R._heroT=0;                          // skybolt: % of target max HP — spike stays felt at any depth
+    const tgt=(R.boss&&R.boss.alive&&!R.boss.untargetable)?R.boss:R.enemies.find(e=>e.alive);
+    if(tgt){dmgTo(R,tgt,BN.mulN(tgt.maxhp,tgt===R.boss?.02:.08),{el:'storm',heavy:1});G.bus.emit('heroProc',{id:h.id,proc:p,x:tgt.x,y:tgt.y});} }
+  else if(p==='goldentide'&&R._heroT>=12){ R._heroT=0;
+    R.essence=BN.add(R.essence,BN.mulN(R.income,20)); G.bus.emit('heroProc',{id:h.id,proc:p}); }
+  else if(p==='unbreakable'&&R._heroT>=15){ R._heroT=0;
+    R.spire.ward=BN.min(R.spire.wardMax,BN.add(R.spire.ward,BN.mulN(R.spire.wardMax,.15)));
+    G.bus.emit('heroProc',{id:h.id,proc:p}); } };
 /* ================= round/wave driver ================= */
 G.sim.startRound = R => { R.round++; R.roundT=0; R.killsRound=0;
   R._rw=C.bnFromLog10(C.rwLog10(R.round,R.tier));
   R.phase='wave';
-  if(R.round%10===0){ R.waveQ=[]; G.sim.spawnBoss(R); }
+  if(R.raid){ R.waveQ=G.sim.buildWave(R);                                // RAID (item 7): mob waves roll ALONGSIDE the boss, escalating each cycle (anti-stall pressure)
+    const hpL=C.hpLog10(R.round,R.tier); R._waveHp=BN.mulN(C.bnFromLog10(hpL),R.waveQ.length||1);
+    if(!R.boss){ G.sim.spawnBoss(R); R._waveHp=R.boss.maxhp; } }
+  else if(R.round%10===0){ R.waveQ=[]; G.sim.spawnBoss(R); }
   else { R.waveQ=G.sim.buildWave(R);
     const hpL=C.hpLog10(R.round,R.tier); R._waveHp=BN.mulN(C.bnFromLog10(hpL),R.waveQ.length);
     if(!R._waveHp||BN.isZ(R._waveHp))R._waveHp=BN.ONE(); }
-  if(R.round%10===0&&R.boss)R._waveHp=R.boss.maxhp;
+  if(!R.raid&&R.round%10===0&&R.boss)R._waveHp=R.boss.maxhp;
   G.bus.emit('round',R.round);
 };
-const roundDone = R => R.phase==='wave'&&(!R.waveQ||!R.waveQ.length)&&!R.enemies.some(e=>e.alive)&&(!R.boss||!R.boss.alive);
+const roundDone = R => R.phase==='wave'&&(!R.waveQ||!R.waveQ.length)&&!R.enemies.some(e=>e.alive)&&(R.raid||!R.boss||!R.boss.alive); // raid: waves cycle UNDER the live boss
 G.sim.step = (R,dt) => { if(R.over)return;
   R.t+=dt; R.roundT+=dt;
   if(R.phase==='idle')G.sim.startRound(R);
@@ -2474,7 +2605,7 @@ G.sim.step = (R,dt) => { if(R.over)return;
   R.enemies.forEach(e=>tickEnemy(R,e,dt));
   if(R.enemies.length>140)R.enemies=R.enemies.filter(e=>e.alive); // pool trim
   R.towers.forEach(t=>towerTick(R,t,dt));
-  spireTick(R,dt); ultTick(R,dt); bossTick(R,dt); ecoTick(R,dt);
+  spireTick(R,dt); ultTick(R,dt); bossTick(R,dt); ecoTick(R,dt); heroTick(R,dt);
   /* idle income + wisp */
   const dl=R.daily&&R.daily.ids||[];
   if(!dl.includes('noidle')){
@@ -2488,12 +2619,13 @@ G.sim.step = (R,dt) => { if(R.over)return;
       G.bus.emit('dailyWin',{daily:R.daily,rw});}}
   if(!G.S.stats.ess1t&&BN.gte(R.essence,BN.from(1e12)))G.S.stats.ess1t=1;
   R.wispT-=dt; if(R.wispT<=0){R.wispT=45+G.rng()*45*(1/(R.mods.wispFreq||1));
-    R.essence=BN.add(R.essence,BN.mulN(R.income,90)); R.stats.wisps++; G.S.wispsLife++; G.bus.emit('wisp',1);}
+    R.essence=BN.add(R.essence,BN.mulN(R.income,90*(1+((R.heroFx&&R.heroFx.wisp)||0)))); R.stats.wisps++; G.S.wispsLife++; G.bus.emit('wisp',1);} // hero wisp spikes
   /* perks every 5 rounds */
   if(R.round>=R.perkAt&&R.phase==='wave'){R.perkAt+=D().perks.every; R.pendingPerk=pickPerks(R);
     if(R.mode!=='active'){G.sim.pickPerk(R,0);} } // idle/balanced auto-pick heuristic (LOCKED #6)
   if(roundDone(R)){ /* wave clear bonus 30% */
-    R.essence=BN.add(R.essence,BN.mulN(BN.mul(R._rw,R.combo),.3*R.mods.essGain*G.D.modes[R.mode].mult));
+    if(R.hero)G.sim.heroXP(R,D().heroes.system.xpWave*R.round);          // hero arc: +10·wave per clear (§6a)
+    R.essence=BN.add(R.essence,BN.mulN(BN.mul(R._rw,R.combo),.3*R.mods.essGain*G.D.modes[R.mode].mult*(1+((R.heroFx&&R.heroFx.ess)||0))));
     const totInt=Math.min(.1,(R.mods.interest||0)+(R.twInterest||0));   // codex + Prism Bank class
     if(totInt){R.essence=BN.mulN(R.essence,1+totInt);
       G.S.stats.interestEss=Math.min(1e15,(G.S.stats.interestEss||0)+Math.min(1e12,BN.toNum(BN.mulN(R.essence,totInt))));}
@@ -2560,6 +2692,7 @@ G.sim.analytic = (R, budgetS, eff) => { // advances rounds closed-form; STOPS at
     if(clearS>=(r%10===0?90:60))break;                    // DPS wall — stop advancing
     time+=clearS+2; if(time>budgetS)break;
     R.round=r; rounds++;
+    if(R.hero)G.sim.heroXP(R,n+10*r);                                   // hero XP parity in analytic slices (~kills + wave bonus)
     const gainL=C.rwLog10(r,R.tier); essL=essL==null?gainL:(Math.max(essL,gainL)+Math.log10(1+Math.pow(10,Math.min(15,Math.min(essL,gainL)-Math.max(essL,gainL)))));
     if(r%10===0)R.stats.bossKills++;
   }
@@ -2578,18 +2711,25 @@ G.sim.offline = (S, awaySeconds) => { const M=G.acctMods(S);
 };
 /* ================= end of run / prestige ================= */
 G.sim.endRun = (R,why) => { if(R.over)return; R.over=why||'end';
-  const S=G.S, manaN=Math.pow(R.round,1.15)*(1+R.kills/500)*R.mods.manaGain;
+  const S=G.S, raidWin=!!R.raid&&why==='raidclear',
+        raidRep=R.raid?!!(S.tiers.raid&&S.tiers.raid[R.tier]):0,
+        /* raid pay: FIRST clear = ceremony bounty (≈ an R100+ run for the tier); replays/retreats pay
+           waves-survived only — the r109 anchor must never become a fast-mana farm */
+        payR=R.raid?(raidWin&&!raidRep?100+10*R.tier:Math.max(1,(R.round-109)*3)):R.round;
+  const manaN=Math.pow(payR,1.15)*(1+R.kills/500)*R.mods.manaGain;
   const mana=BN.from(Math.max(1,Math.floor(manaN)));
   S.mana=BN.add(S.mana,mana); S.manaLife=BN.add(S.manaLife,mana);
   S.stats.overkills=(S.stats.overkills|0)+(R.stats.overkills|0);
-  if(R.round>=50&&G.liveops&&G.liveops.passGain)G.liveops.passGain(1);
+  if((R.raid?(raidWin&&!raidRep):R.round>=50)&&G.liveops&&G.liveops.passGain)G.liveops.passGain(1);
+  const best=S.tiers.best[R.tier]|0; let newBest=0, cleared=0;
+  if(!R.raid){ newBest=R.round>best; if(newBest)S.tiers.best[R.tier]=R.round;
+    if(R.hard){const bh=S.tiers.bestHard[R.tier]|0; if(R.round>bh)S.tiers.bestHard[R.tier]=R.round;}
+    cleared=R.round>=100; if(cleared)S.tiers.cleared[R.tier+'_'+R.mapIdx]=1; } // 3/3 clears UNLOCK the raid — only the RAID advances the tier (LOCKED flow, DESIGN-FINAL-RUN 5)
+  let tierUp=0;
+  if(raidWin){ S.tiers.raid=S.tiers.raid||{}; S.tiers.raid[R.tier]=1; S.stats.raids=(S.stats.raids|0)+1;
+    if(S.tiers.unlocked===R.tier&&R.tier<20){S.tiers.unlocked=R.tier+1; tierUp=1;} }
   if(G.ach)G.ach.check(S);
-  const best=S.tiers.best[R.tier]|0, newBest=R.round>best; if(newBest)S.tiers.best[R.tier]=R.round;
-  if(R.hard){const bh=S.tiers.bestHard[R.tier]|0; if(R.round>bh)S.tiers.bestHard[R.tier]=R.round;}
-  const cleared=R.round>=100; if(cleared){S.tiers.cleared[R.tier+'_'+R.mapIdx]=1;
-    const all=[0,1,2].every(i=>S.tiers.cleared[R.tier+'_'+i]);
-    if(all&&S.tiers.unlocked===R.tier&&R.tier<20)S.tiers.unlocked=R.tier+1;}
-  G.bus.emit('runEnd',{R,mana,newBest,prevBest:best,cleared}); return mana;
+  G.bus.emit('runEnd',{R,mana,newBest,prevBest:best,cleared,raidWin,tierUp}); return mana;
 };
 G.sim.ascend = S => { if(!G.R||G.R.round<100)return null;
   const M=G.acctMods(S), mlLog=BN.log10(S.manaLife);
@@ -2626,6 +2766,16 @@ G.sim.buyCodex = (S,book,line) => { const b=D().codex.books.find(x=>x.id===book)
 G.sim.buyFoundry = (S,twId,node) => { const f=S.foundry[twId]=S.foundry[twId]||{}; const lvl=f[node]|0;
   const cost=Math.ceil(8*Math.pow(1.25,lvl)); if((S.cores[twId]|0)<cost)return false;
   S.cores[twId]-=cost; f[node]=lvl+1; S.stats.foundryBuys=(S.stats.foundryBuys|0)+1; return true; };
+/* ---- MASTERY SPINE (deep-dive §2/§4, DESIGN-FINAL-RUN 4): 12 Cores nodes, 4/4/4 chapters ---- */
+G.sim.masteryCh = (S,twId) => { const n=(S.mastery&&S.mastery[twId])|0; return n>=12?3:n>=8?2:n>=4?1:0; };
+G.sim.masteryCost = (S,twId) => { const B=D().balance.mastery, n=(S.mastery&&S.mastery[twId])|0;
+  return n>=B.nodes?null:Math.ceil(B.base*Math.pow(B.g,n)); };
+G.sim.buyMastery = (S,twId) => { const B=D().balance.mastery, cost=G.sim.masteryCost(S,twId);
+  if(cost==null) return false;
+  const n=(S.mastery&&S.mastery[twId])|0;
+  if((S.stats.bosses|0)<(B.gates[Math.floor(n/4)]||0)) return false;     // boss-gated chapter unlock
+  if((S.cores[twId]|0)<cost) return false;
+  S.cores[twId]-=cost; if(!S.mastery)S.mastery={}; S.mastery[twId]=n+1; return true; };
 G.sim.buyPermFam = (S,fam) => { const B=D().balance.famTrack, lvl=(S.perm&&S.perm.fam&&S.perm.fam[fam])|0;
   if(lvl>=B.max) return false;
   const cost=BN.from(B.base*Math.pow(B.g,lvl));                          // L-th level = base·g^(L-1) Mana (§1a)
@@ -4143,6 +4293,14 @@ const eSprite = (sil, cat, col, px, flags) => { const key = sil + '|' + cat + '|
   if (imm) { x.strokeStyle = '#c77bff'; x.lineWidth = 1.6;               // broken-ring = element-immune
     x.beginPath(); x.arc(c, c, r * 1.3, .5, Math.PI * .9); x.stroke();
     x.beginPath(); x.arc(c, c, r * 1.3, Math.PI * 1.1, R2 - .5); x.stroke(); }
+  /* intrinsic tag corners (frostward/regen/fortified/berserk) — baked top-right, stack left (sweep D2) */
+  let tbx = px + 2;
+  for (const fl of ['w', 'r', 'o', 'b']) if (flags.includes(fl)) {
+    const gc = TAGB[fl][1], bs = Math.min(12, Math.max(8, px * .34)); tbx -= bs + 1;
+    x.save(); x.translate(tbx, -bs * .55 - oy);
+    x.beginPath(); x.arc(bs / 2, bs / 2, bs / 2 + .7, 0, R2); x.fillStyle = 'rgba(10,13,24,.85)'; x.fill();
+    x.strokeStyle = gc; x.lineWidth = .9; x.stroke();
+    tagMark(x, bs, fl, gc); x.restore(); }
   if (ESPR.size > 360) ESPR.clear();
   const out = {c: s, pad}; ESPR.set(key, out); return out;
 };
@@ -4206,6 +4364,266 @@ const evoLayer = (ctx, S, col, el, tw, evo) => {
   ctx.shadowBlur = 0;
   evoBadge(ctx, g, u, S);
 };
+/* ============== UPGRADE-PATH EFFECT GLYPHS (DESIGN-NEEDS-V2 §4 · ref-06 popup law) ==============
+   kind='path', id='<towerId>.<pathIdx>.<tierIdx>' — the tier-cell's DOMINANT effect key picks the
+   glyph, so a path reads by its ART, not pip count (Bloons law); element hue reinforces, never
+   carries (colorblind shape+value). States o.st: 'own' lit+emissive · 'next' accent ring (the buy
+   scent) · 'dim' value-ghost (future). Tier chrome: T1-T4 rounded plate with a tier value ramp;
+   T5 = gilt octagon (ref-06 crown law — octagon is the Forged shape language, gold stays earned).
+   Baked once via icoImg/sprite — zero per-frame cost. One stroke weight; every mark ink-haloed. */
+const PPRIO = ['sum', 'exec', 'rewind', 'possess', 'fear', 'wall', 'mirrorSpire', 'allElem',
+  'buffRandom', 'nova', 'beam', 'pull', 'knock', 'ground', 'burn', 'poison', 'bleed', 'freeze',
+  'stun', 'slow', 'curse', 'mark', 'shred', 'spreadOnDeath', 'chain', 'splash', 'armorIg',
+  'shieldMul', 'vsBoss', 'vsStatus', 'maxhp', 'pierce', 'crit', 'ramp', 'multi', 'zone', 'aura',
+  'refund', 'income', 'spire', 'detect'];
+const PSTAT = ['d', 'rt', 'rg', 'projS'];              /* plain stats resolve LAST: flavor wins */
+const PALIAS = {sumMod: 'sum', executeChain: 'exec', lance: 'beam', interest: 'income',
+  tick: 'income', retarget: 'mark', freezeHp: 'freeze', shatterChain: 'chain', rampHold: 'ramp',
+  shredShare: 'shred', groundMerge: 'ground', critFreeze: 'crit', beamweb: 'chain', brand: 'curse'};
+/* long-tail semantic groups (fam 2-7 bespoke flags) → canonical glyphs; node-audited to zero fallback */
+const PGRP = {
+  reflect: 'reflect reflectDebuff reflectSpire shieldReflect',
+  silence: 'silence shieldOff buffOff healBlock summonBlock stripBuff stealBuff wardStrip shieldStrip barrierBreak banish chainStrip unwardExit noRegen noRegenZone regenToDot healToDmg empNoRegen bossNoShield smother fearDisarm',
+  guard: 'absorb absorbToDmg overShield shieldRegen selfRepair selfRepairAura repairFast martyrHeal teamPool teamShieldHp lastBastion bastion reviveTower miracle cleanse ccCleanse purgeHeal debuffRes silenceImmune blockHeal drainHeal lifesteal dmgToHeal killRefundHp lastRite bossDr',
+  echo: 'ultCd ultDur ultPow echoChance echoAll freeCast critRefundCd lullTick rewindNode autoRefresh autoLoop',
+  bank: 'bank bankDump bankShield restBank autoDeposit hedge smooth loan loanFree loanAuto loanRisk bossInvest interestCapUp coinSplit coinCascade',
+  detect: 'revealAll revealAmp revealCorridor revealDebuff revealEss revealPulse revealTeam spawnPing noMiss leadShot preAim tagFar dodgeCut lockStrong seek focusOrder burnCamo lingerLight prePhase',
+  sum: 'raise risenShard risenBoom fuse colossus orbitSpire bodyBlock rotateFast dualType onDemand absorbElite sumAA champion champion2',
+  spire: 'spireScaleD spireScaleRg spireScaleRt spireElem spireDome spireShotBuff coverSpire',
+  wall: 'wallHp wallReform laneBlock twinWall anchored noCross',
+  slow: 'atkSlow edgeSlow exitSlow speedCap staminaSap bogRamp holdChoke',
+  stun: 'root popStun shatterStun blinkStun bossStagger pinBrute',
+  pull: 'tether tether2 tetherRecoil tauntPull',
+  knock: 'slingCycle collideDmg knockAura',
+  bleed: 'bleedSpd bleedChainBoom bloodDebt bloodMoon sapPool hpSpike lowHpD missingHpD leechChain',
+  fear: 'fearDrift fearHurt',
+  vsBoss: 'bossDot bossWeak bossWeak2 bossWeakAll',
+  exec: 'vsLowHp execBlast execRefund arcExec rtLow riteNuke deepHit',
+  crit: 'critMark critReroll critVsShred critWindow firstCritAura',
+  ramp: 'rallyRamp patienceRamp buffLinger burstBuff offProcBuff overchargeRt charge chargeMult heatCharge stackLock warmup charge3x',
+  income: 'essDrop deathEss essOrbs killTick tickScale waveBonus eliteBonus leakPay drainEss',
+  aura: 'riderAura perTowerD teamD teamDPerPending shareBest pylonLink patchLink accAura',
+  shred: 'shred2x shredBoom shredCap shredTeam shredZone fieldShred shredWeak quenchShred',
+  splash: 'splashBehind splitImpact critSplashAura aoeTaken deathBoom bombard walkShells eliteBoom',
+  multi: 'arc3 doubleTap burst3 hitAllElites',
+  nova: 'superNova novaChain deathNovaAll overkillNova ventNova withdrawNova riftStorm catastrophe batteryBurst burst25',
+  burn: 'igniteConduct chainBoomBurn coneOverheat pyroclasm heatBurst heatFrenzy',
+  freeze: 'cryoSpread azaf fimbul heldShatter thermalShock freezeFastest brittle',
+  chain: 'webChains chainCluster bounce',
+  curse: 'chaosDebuff debuffJump contagion pandemic',
+  buffRandom: 'chaosProc chaosRare noRepeat rainbow7 reforge',
+  allElem: 'allStatus allSunder fullSpectrum attune attuneD fifthMax bladeElem dominateElem dualWeight',
+  vsStatus: 'statusAmp statusScaleD weaknessBurst ccAmp',
+  maxhp: 'maxhpDot maxhpDrain surplusHp',
+  pierce: 'overBlockers unblockable pierceAura',
+  zone: 'sealZone patch2 patch3',
+  refund: 'refundOnLeak critRefund overkillRefund',
+  projS: 'projSAura',
+  mark: 'markBoom markLink markTransfer prioStrong prioShield',
+  beam: 'dualBeam dualBossBeam',
+  shieldMul: 'oneShield shieldDetonateAll'
+};
+for (const gk in PGRP) PGRP[gk].split(' ').forEach(k => { if (!PALIAS[k]) PALIAS[k] = gk; });
+const pathDom = cell => { if (cell) {
+  for (const k of PPRIO) if (cell[k] != null) return k;
+  for (const k in cell) if (PALIAS[k]) return PALIAS[k];
+  for (const k of PSTAT) if (cell[k] != null) return k; } return 'd'; };
+const PGKEYS = PPRIO.concat(['reflect', 'silence', 'guard', 'echo', 'bank'], PSTAT);
+/* glyph vocabulary — 24-grid, live ~5..19, center 12,12; kit: st=ink-haloed stroke, fl=fill+ink */
+const pathGlyph = (ctx, S, key, ac, glow) => {
+  const g = U(ctx, S), lw = Math.max(1.3, S * .088), th = lw * .66;
+  const ink = w => { ctx.shadowBlur = 0; ctx.strokeStyle = A().outline;
+    ctx.lineWidth = (w || lw) + Math.max(1, S * .052); ctx.stroke(); };
+  const acc = w => { if (glow) { ctx.shadowColor = ac; ctx.shadowBlur = S * .09; }
+    ctx.strokeStyle = ac; ctx.lineWidth = w || lw; ctx.stroke(); ctx.shadowBlur = 0; };
+  const st = w => { ink(w); acc(w); };
+  const fl = () => { ctx.shadowBlur = 0; ctx.fillStyle = ac; ctx.fill();
+    ctx.strokeStyle = A().outline; ctx.lineWidth = Math.max(.8, S * .042); ctx.stroke(); };
+  const dot = (x, y, r) => { g.arc(x, y, r); fl(); };
+  const fade = (a, f) => { ctx.save(); ctx.globalAlpha *= a; f(); ctx.restore(); };
+  switch (key) {
+    case 'd': g.P([[12, 4.6], [13.9, 7.4], [13.1, 13.6], [10.9, 13.6], [10.1, 7.4]]); fl();
+      g.L([[8.8, 14.8], [15.2, 14.8]]); st(th); g.L([[12, 14.8], [12, 18.4]]); st(th); dot(12, 19.1, .9); break;
+    case 'rt': g.L([[7.2, 6.5], [12.6, 12], [7.2, 17.5]]); st(); g.L([[12.2, 6.5], [17.6, 12], [12.2, 17.5]]); st(); break;
+    case 'rg': g.arc(7, 17, 4.2, -Math.PI / 2, 0); st(th); g.arc(7, 17, 7.6, -Math.PI / 2, 0); st(th);
+      g.arc(7, 17, 11, -Math.PI / 2, 0); st(th); dot(7, 17, 1.3); break;
+    case 'projS': g.P([[19.4, 12], [13.6, 8.6], [13.6, 15.4]]); fl();
+      g.L([[4.6, 9.6], [11.4, 9.6]]); st(th); g.L([[4.6, 14.4], [11.4, 14.4]]); st(th); break;
+    case 'crit': g.P([[12, 4.8], [13.5, 10.5], [19.2, 12], [13.5, 13.5], [12, 19.2], [10.5, 13.5], [4.8, 12], [10.5, 10.5]]); fl(); break;
+    case 'pierce': g.L([[9.4, 5.4], [9.4, 18.6]]); st(th); g.L([[14.6, 5.4], [14.6, 18.6]]); st(th);
+      g.L([[4.6, 12], [16.4, 12]]); st(); g.P([[19.6, 12], [16, 9.8], [16, 14.2]]); fl(); break;
+    case 'multi': [8.6, 15.4].forEach(x => { g.L([[x, 18.4], [x, 9.8]]); st(th);
+      g.P([[x, 4.8], [x - 2.2, 9], [x + 2.2, 9]]); fl(); }); break;
+    case 'ramp': g.rr(4.6, 13.8, 3.6, 5.6, 1); fl(); g.rr(10.2, 10.2, 3.6, 9.2, 1); fl();
+      g.rr(15.8, 6, 3.6, 13.4, 1); fl(); break;
+    case 'burn': g.P([[12, 4.4], [15.7, 8.8], [16.5, 13.2], [14, 18.3], [10, 18.3], [7.5, 13.2], [8.3, 8.8]]); fl();
+      g.P([[12, 10.2], [13.7, 13.3], [12, 16.4], [10.3, 13.3]]); ctx.fillStyle = shade(ac, .5); ctx.fill(); break;
+    case 'poison': g.P([[11, 4.8], [14.5, 12.2], [13.9, 15.9], [11, 17.2], [8.1, 15.9], [7.5, 12.2]]); fl();
+      dot(16.6, 7.2, 1.05); dot(17.7, 10.4, .75); break;
+    case 'bleed': g.L([[6, 6], [17.4, 17.4]]); st();
+      g.P([[16.6, 5.2], [18.4, 8.6], [16.6, 10.2], [14.8, 8.6]]); fl(); break;
+    case 'freeze': g.L([[12, 4.6], [12, 19.4]]); st(th); g.L([[5.6, 8.3], [18.4, 15.7]]); st(th);
+      g.L([[18.4, 8.3], [5.6, 15.7]]); st(th); g.L([[10.2, 6.4], [12, 8.2], [13.8, 6.4]]); st(th * .8);
+      g.L([[10.2, 17.6], [12, 15.8], [13.8, 17.6]]); st(th * .8); break;
+    case 'slow': g.P([[7.6, 5], [16.4, 5], [12, 11.2]]); st(th); g.P([[7.6, 19], [16.4, 19], [12, 12.8]]); st(th);
+      dot(12, 16.6, 1.1); break;
+    case 'stun': g.arc(12, 13.4, 6.8, Math.PI * 1.12, Math.PI * 1.88); st();
+      dot(6.2, 10, 1.15); dot(17.8, 10, 1.15);
+      g.P([[12, 10.6], [12.8, 12.6], [14.8, 13.4], [12.8, 14.2], [12, 16.2], [11.2, 14.2], [9.2, 13.4], [11.2, 12.6]]); fl(); break;
+    case 'shred': g.L([[6.4, 4.8], [9.6, 19.2]]); st(); g.L([[11.2, 4.8], [14.4, 19.2]]); st();
+      g.L([[16, 4.8], [19.2, 19.2]]); st(); break;
+    case 'curse': g.arc(12, 12, 6.6); st(); g.L([[7.4, 16.6], [16.6, 7.4]]); st(); break;
+    case 'mark': g.arc(12, 12, 5.6); st();
+      [[[12, 4.4], [12, 7.6]], [[12, 16.4], [12, 19.6]], [[4.4, 12], [7.6, 12]], [[16.4, 12], [19.6, 12]]]
+        .forEach(t => { g.L(t); st(th); }); dot(12, 12, 1.4); break;
+    case 'chain': g.L([[14.2, 4.6], [9, 11.4], [13.2, 12.6], [9.8, 19.4]]); st();
+      dot(14.2, 4.6, 1.15); dot(9.8, 19.4, 1.15); break;
+    case 'splash': g.arc(12, 12, 3.1); st(th); fade(.75, () => { g.arc(12, 12, 6.1); st(th); });
+      fade(.5, () => { g.arc(12, 12, 9); st(th * .8); }); break;
+    case 'spreadOnDeath': dot(12, 12, 1.9);
+      [[12, 5.2], [18.8, 12], [12, 18.8], [5.2, 12]].forEach(p => dot(p[0], p[1], 1.05));
+      [[[12, 7.4], [12, 9.6]], [[16.6, 12], [14.4, 12]], [[12, 16.6], [12, 14.4]], [[7.4, 12], [9.6, 12]]]
+        .forEach(t => { g.L(t); st(th * .7); }); break;
+    case 'armorIg': g.P([[12, 4.4], [18.2, 6.8], [18.2, 12], [12, 19.6], [5.8, 12], [5.8, 6.8]]); st();
+      g.L([[11.8, 6.4], [10.4, 10.6], [13.4, 12.4], [11.4, 16.6]]); st(th * .85); break;
+    case 'shieldMul': g.P([[12, 4.4], [18.2, 6.8], [18.2, 12], [12, 19.6], [5.8, 12], [5.8, 6.8]]); st();
+      g.P([[12, 8], [12.9, 10.7], [15.6, 11.6], [12.9, 12.5], [12, 15.2], [11.1, 12.5], [8.4, 11.6], [11.1, 10.7]]); fl(); break;
+    case 'vsBoss': g.P([[6.2, 16.8], [6.2, 8.2], [9.4, 11.4], [12, 6.6], [14.6, 11.4], [17.8, 8.2], [17.8, 16.8]]); fl();
+      ctx.strokeStyle = A().outline; ctx.lineWidth = Math.max(.9, S * .05);
+      g.L([[11.6, 16.8], [12.4, 13.2], [11.2, 10.2]]); ctx.stroke(); break;
+    case 'vsStatus': g.L([[7, 13.2], [12, 8.2], [17, 13.2]]); st(); g.L([[7, 18], [12, 13], [17, 18]]); st();
+      dot(12, 5.4, 1.25); break;
+    case 'maxhp': g.rr(4.8, 10.4, 14.4, 5.2, 1.4); st(th); g.L([[12, 3.6], [12, 6.6]]); st(th);
+      g.P([[12, 9.6], [10.2, 6.6], [13.8, 6.6]]); fl(); break;
+    case 'zone': for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 + .26;
+      g.arc(12, 12, 7, a, a + Math.PI / 3 - .52); st(th); } break;
+    case 'aura': g.arc(12, 12, 3); st(th); fade(.7, () => { g.arc(12, 12, 6.2); st(th * .85); });
+      fade(.45, () => { g.arc(12, 12, 9.2); st(th * .7); }); break;
+    case 'income': g.arc(12, 12, 6.2); st(); g.L([[12, 9.2], [12, 14.8]]); st(th);
+      g.L([[9.2, 12], [14.8, 12]]); st(th); break;
+    case 'refund': g.arc(12.6, 13.2, 5); st(); g.arc(12.6, 13.2, 8.1, Math.PI * .95, Math.PI * 1.62); st(th);
+      g.P([[15.6, 5.7], [12.9, 4.9], [14.6, 8.3]]); fl(); break;
+    case 'spire': g.P([[12, 4.2], [15.2, 18.2], [8.8, 18.2]]); st(); g.L([[6.4, 19.6], [17.6, 19.6]]); st(th);
+      g.L([[17.8, 5.2], [17.8, 9.2]]); st(th); g.L([[15.8, 7.2], [19.8, 7.2]]); st(th); break;
+    case 'detect': g.P([[4.8, 12], [12, 6.6], [19.2, 12], [12, 17.4]]); st(); dot(12, 12, 2.1); break;
+    case 'nova': for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 + Math.PI / 8;
+      g.L([[12 + Math.cos(a) * 4.2, 12 + Math.sin(a) * 4.2], [12 + Math.cos(a) * 9.3, 12 + Math.sin(a) * 9.3]]); st(th); }
+      dot(12, 12, 2.3); break;
+    case 'beam': g.P([[4.6, 8.6], [9.2, 12], [4.6, 15.4]]); fl(); g.L([[9.2, 12], [19.6, 12]]); st();
+      fade(.5, () => { g.L([[9.2, 10.6], [18, 10.6]]); acc(th * .6); }); break;
+    case 'pull': dot(12, 12, 1.8); g.L([[5, 5], [8.8, 8.8]]); st(th);
+      g.P([[10.4, 10.4], [7.2, 9.7], [9.7, 7.2]]); fl(); g.L([[19, 5], [15.2, 8.8]]); st(th);
+      g.P([[13.6, 10.4], [14.3, 7.2], [16.8, 9.7]]); fl(); g.L([[12, 19.6], [12, 15.8]]); st(th);
+      g.P([[12, 14.2], [10.3, 16.8], [13.7, 16.8]]); fl(); break;
+    case 'knock': dot(12, 12, 1.8); g.L([[8.8, 8.8], [5, 5]]); st(th);
+      g.P([[4.2, 4.2], [7.5, 5], [5, 7.5]]); fl(); g.L([[15.2, 8.8], [19, 5]]); st(th);
+      g.P([[19.8, 4.2], [16.5, 5], [19, 7.5]]); fl(); g.L([[12, 15.8], [12, 19.4]]); st(th);
+      g.P([[12, 20.6], [10.3, 18], [13.7, 18]]); fl(); break;
+    case 'ground': g.ell(12, 15.8, 7, 2.9); st(th); g.L([[9.2, 4.8], [9.2, 8.8]]); st(th);
+      g.L([[14.8, 4], [14.8, 7.6]]); st(th); dot(9.2, 10.6, .85); dot(14.8, 9.4, .85); break;
+    case 'exec': g.L([[6.2, 4.8], [17.8, 19.2]]); st(lw * 1.15); g.L([[17.8, 4.8], [6.2, 19.2]]); st(lw * 1.15);
+      dot(12, 12, 1.5); break;
+    case 'rewind': g.arc(12, 12.4, 6.4, -Math.PI * .38, Math.PI * 1.22); st();
+      g.P([[14.4, 6.5], [17.4, 5.4], [15.6, 9.2]]); fl(); break;
+    case 'possess': g.arc(12, 12, 6.8, Math.PI * .15, Math.PI * 1.35); st(th);
+      g.arc(12, 12, 3.8, Math.PI * 1.15, Math.PI * 2.55); st(th); dot(12, 12, 1.6); break;
+    case 'fear': g.rr(11.05, 4.6, 1.9, 8.2, .95); fl(); dot(12, 16.2, 1.35);
+      g.arc(12, 12, 8.6, Math.PI * .82, Math.PI * 1.18); st(th * .7);
+      g.arc(12, 12, 8.6, -Math.PI * .18, Math.PI * .18); st(th * .7); break;
+    case 'wall': g.rr(4.8, 7.4, 14.4, 4, .9); st(th); g.rr(4.8, 12.8, 6.6, 4, .9); st(th);
+      g.rr(12.8, 12.8, 6.4, 4, .9); st(th); break;
+    case 'mirrorSpire': g.P([[8.4, 5.2], [10.8, 18], [6, 18]]); st(th);
+      g.P([[15.6, 5.2], [18, 18], [13.2, 18]]); st(th); break;
+    case 'allElem': g.P([[12, 5], [18.8, 16.8], [5.2, 16.8]]); st();
+      fade(.7, () => { g.L([[13.8, 12.6], [19.8, 9.8]]); acc(th * .7); g.L([[14.2, 13.8], [20, 13.8]]); acc(th * .7);
+        g.L([[13.8, 15], [19.8, 17.8]]); acc(th * .7); g.L([[4, 11], [9.8, 13]]); acc(th * .7); }); break;
+    case 'buffRandom': g.rr(5.6, 5.6, 12.8, 12.8, 2.6); st(); dot(9, 9, 1.15); dot(15, 15, 1.15);
+      dot(15, 9, 1.15); break;
+    case 'sum': g.arc(12, 16, 4.6, Math.PI, 0); st(); dot(7.8, 9.4, 1.35); dot(12, 6.8, 1.35);
+      dot(16.2, 9.4, 1.35); break;
+    case 'reflect': g.L([[5.4, 17.6], [18.6, 17.6]]); st();
+      g.L([[6.4, 5.6], [11.6, 15.4], [16.8, 7.4]]); st(th);
+      g.P([[17.8, 5.2], [14.6, 6.4], [17, 9.2]]); fl(); break;
+    case 'silence': g.arc(12, 12, 6.8); st(); g.L([[6.4, 12], [17.6, 12]]); st(); break;
+    case 'guard': g.P([[12, 4.6], [18, 7], [18, 12], [12, 19.4], [6, 12], [6, 7]]); st();
+      g.L([[12, 8.4], [12, 14]]); st(th); g.L([[9.3, 11.2], [14.7, 11.2]]); st(th); break;
+    case 'echo': g.arc(12, 12, 3.4); st();
+      g.arc(12, 12, 6.4, -0.85, 0.85); st(th); g.arc(12, 12, 6.4, Math.PI - 0.85, Math.PI + 0.85); st(th);
+      fade(.55, () => { g.arc(12, 12, 9.2, -0.6, 0.6); st(th * .75);
+        g.arc(12, 12, 9.2, Math.PI - .6, Math.PI + .6); st(th * .75); }); break;
+    case 'bank': g.ell(12, 15.6, 6, 2.6); st(th); g.ell(12, 12.2, 6, 2.6); st(th);
+      g.ell(12, 8.8, 6, 2.6); st(); break;
+    default: g.P([[12, 4.8], [13.5, 10.5], [19.2, 12], [13.5, 13.5], [12, 19.2], [10.5, 13.5], [4.8, 12], [10.5, 10.5]]); fl();
+  }
+};
+/* the tile: plate chrome by tier + state, then the glyph. o: {st, el, key} */
+const pathTile = (ctx, S, tw, pi, ti, o) => { o = o || {};
+  const st = o.st || 'own', el = o.el || (tw && tw.el) || 'arcane';
+  const cell = tw && tw.p && tw.p[pi] && tw.p[pi].t ? tw.p[pi].t[ti] : null;
+  const key = o.key || pathDom(cell);
+  const base = hue(el), own = st === 'own', next = st === 'next', ult = ti === 4;
+  const QS = (typeof Q !== 'undefined' && Q && Q.shadows) ? Q.shadows() : 1;
+  const g = U(ctx, S);
+  const plate = () => { if (ult) { const pts = []; for (let i = 0; i < 8; i++) {
+      const a = Math.PI / 8 + i * Math.PI / 4; pts.push([12 + Math.cos(a) * 10.2, 12 + Math.sin(a) * 10.2]); }
+    g.P(pts); } else g.rr(2, 2, 20, 20, 4.6); };
+  const pv = -.32 + ti * .07;                          /* tier value ramp: the ladder climbs */
+  plate();
+  const bg = ctx.createLinearGradient(0, S * .08, 0, S * .96);
+  bg.addColorStop(0, shade('#1C2230', pv + .12)); bg.addColorStop(1, shade('#12172A', pv));
+  ctx.fillStyle = bg; ctx.fill();
+  if (ult) {                                           /* gilt octagon frame — ref-06 crown law */
+    if (own && QS) { ctx.shadowColor = EVOGOLD; ctx.shadowBlur = S * .12; }
+    plate(); ctx.lineWidth = Math.max(1.4, S * .07);
+    ctx.strokeStyle = own ? EVOGOLD : next ? shade(EVOGOLD, -.12) : shade(EVOGOLD, -.5); ctx.stroke();
+    ctx.shadowBlur = 0;
+    plate(); ctx.lineWidth = Math.max(.7, S * .028); ctx.strokeStyle = A().outline; ctx.stroke();
+  } else {
+    plate(); ctx.lineWidth = Math.max(1.1, S * .055);
+    ctx.strokeStyle = next ? base : own ? shade(base, -.18) : shade('#1C2230', .16); ctx.stroke();
+    if (own) { ctx.save(); ctx.globalAlpha = .5; plate();
+      ctx.lineWidth = Math.max(.6, S * .025); ctx.strokeStyle = shade(base, .38); ctx.stroke(); ctx.restore(); }
+  }
+  const ac = own || next ? base : shade(base, -.42);   /* dim keeps hue, drops value (grayscale-safe) */
+  ctx.save(); ctx.globalAlpha = own ? 1 : next ? .92 : .58;
+  pathGlyph(ctx, S, key, ac, own && QS);
+  ctx.restore();
+};
+/* combat status badges + intrinsic tag corners — SAME glyph vocabulary at combat size (one system).
+   Baked once per (glyph|color); blitted per frame at LOD>0 (perfBudget law — zero path-building). */
+const TAGB = {w: ['freeze', '#7FDBFF'], r: ['guard', '#57e6b7'], o: ['wall', '#c9a86a'], b: ['shred', '#ff6b6b']};
+const STB = new Map();
+const stBadge = (gk, gc) => { const key = gk + '|' + gc; let s = STB.get(key); if (s) return s;
+  const B = 13, cv = document.createElement('canvas'); cv.width = cv.height = B * 2;
+  const x = cv.getContext('2d'); x.setTransform(2, 0, 0, 2, 0, 0); x.lineJoin = 'round'; x.lineCap = 'round';
+  x.beginPath(); x.arc(B / 2, B / 2, B / 2 - .6, 0, Math.PI * 2); x.fillStyle = 'rgba(10,13,24,.82)'; x.fill();
+  x.strokeStyle = 'rgba(159,196,255,.35)'; x.lineWidth = .8; x.stroke();
+  pathGlyph(x, B, gk, gc, 0); STB.set(key, cv); return cv; };
+/* tag-corner micro-marks — at ≤12px only bold primitives survive the squint test */
+const tagMark = (x, bs, fl, gc) => { const u = bs / 10, c = bs / 2; x.strokeStyle = gc; x.lineCap = 'round';
+  x.lineWidth = Math.max(1.2, bs * .16); x.beginPath();
+  if (fl === 'w') { for (let i = 0; i < 3; i++) { const a = -Math.PI / 2 + i * Math.PI / 3;
+      x.moveTo(c - Math.cos(a) * 3.4 * u, c - Math.sin(a) * 3.4 * u); x.lineTo(c + Math.cos(a) * 3.4 * u, c + Math.sin(a) * 3.4 * u); } }
+  else if (fl === 'r') { x.moveTo(c, c - 3.4 * u); x.lineTo(c, c + 3.4 * u); x.moveTo(c - 3.4 * u, c); x.lineTo(c + 3.4 * u, c); }
+  else if (fl === 'o') { x.rect(c - 2.8 * u, c - 2.8 * u, 5.6 * u, 5.6 * u); }
+  else { x.moveTo(c - 3 * u, c - 3.4 * u); x.lineTo(c + u, c + 3.4 * u); x.moveTo(c + .4 * u, c - 3.4 * u); x.lineTo(c + 3.4 * u, c + 2 * u); }
+  x.stroke(); };
+/* live status row under an enemy/boss body: up to 3 badges + freeze encasement ring */
+const statusRow = (ctx, e, sz) => { const bd = [];
+  if (e.stun > 0) bd.push(['stun', '#ffe066']);
+  if (e.st && e.st.burn) bd.push(['burn', hue('fire')]);
+  if (e.st && e.st.poison) bd.push(['poison', hue('nature')]);
+  if (e.st && e.st.bleed) bd.push(['bleed', '#ff6b6b']);
+  if (e.slow > 0 && !(e.frz > 0)) bd.push(['slow', '#7FDBFF']);
+  if (e.shred > 0) bd.push(['shred', '#c9a86a']);
+  if (e.vuln > 1) bd.push(['mark', hue('storm')]);
+  const n = Math.min(3, bd.length);
+  for (let i = 0; i < n; i++) ctx.drawImage(stBadge(bd[i][0], bd[i][1]), Math.round(e.x - n * 7 + i * 14), Math.round(e.y + sz * .52), 13, 13);
+  if (e.frz > 0) { ctx.strokeStyle = 'rgba(127,219,255,.85)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(e.x, e.y, sz * .52, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = .8;
+    ctx.beginPath(); ctx.arc(e.x, e.y, sz * .52 + 2, 0, Math.PI * 2); ctx.stroke(); } };
+G.art = G.art || {}; G.art._path = {pathDom, PGKEYS, pathTile, stBadge, statusRow, TAGB};
 G.drawIcon = (ctx, kind, id, S, o) => { o = o || {}; const A = G.C.art, c = S / 2;
   ctx.save(); if (o.x || o.y) ctx.translate(o.x || 0, o.y || 0);
   ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.lineWidth = A.stroke;
@@ -4278,6 +4696,10 @@ G.drawIcon = (ctx, kind, id, S, o) => { o = o || {}; const A = G.C.art, c = S / 
       ctx.beginPath(); ctx.arc(12 * u, 9.5 * u, 3 * u, Math.PI, 0); ink(S * .02); acc(); }
     else { [8, 12, 16].forEach(x => dot(x, 12, 1.5)); }                                  // more · · ·
   }
+  if (kind === 'path') {                     // upgrade-path effect-glyph tile (DESIGN-NEEDS-V2 §4)
+    const pp = String(id).split('.'), twp = G.D.towerById ? G.D.towerById[pp[0]] : (G.D.towers || []).find(t => t.id === pp[0]);
+    pathTile(ctx, S, twp, pp[1] | 0, pp[2] | 0, o);
+  }
   ctx.restore();
 };
 /* ================= main scene ================= */
@@ -4306,16 +4728,20 @@ rd.init = cv => { rd.cv = cv; rd.ctx = cv.getContext('2d');
 };
 /* ================= STATIC LAYER (baked once) vs DYNAMIC (per-frame) — render law #3 ============ */
 const BAKE_PAD = 120, BAKE_SCALE = 2;
-const drawDecals = (ctx, Rn) => { const lay = Rn.lay;
+/* biomeArt consumers (MAPS-VERDICT #9) — tint layers only; landmark glyph SETS are a queued art pass */
+const biomeArtOf = Rn => (G.D.biomeArt && G.D.biomeArt[(((G.D.tiers[Rn.tier - 1] || {}).biome) || '').toLowerCase()]) || null;
+const hexA = (hx, a) => { const n = parseInt(hx.slice(1), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; };
+const drawDecals = (ctx, Rn) => { const lay = Rn.lay, ba = biomeArtOf(Rn);
   if (lay.deco) lay.deco.forEach(dp => { ctx.fillStyle = 'rgba(200,214,240,.10)';
     ctx.beginPath(); ctx.arc(dp.x, dp.y, 3.2, 0, R2); ctx.fill(); });
-  if (lay.landmarks) lay.landmarks.forEach(lm => { ctx.strokeStyle = 'rgba(200,214,240,.25)'; ctx.lineWidth = 1.6;
+  if (lay.landmarks) lay.landmarks.forEach(lm => { ctx.strokeStyle = ba ? hexA(ba.weatherTint, .34) : 'rgba(200,214,240,.25)'; ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.moveTo(lm.x, lm.y - 8); ctx.lineTo(lm.x + 7, lm.y); ctx.lineTo(lm.x, lm.y + 8); ctx.lineTo(lm.x - 7, lm.y); ctx.closePath(); ctx.stroke();
-    ctx.strokeStyle = 'rgba(200,214,240,.12)'; ctx.beginPath(); ctx.arc(lm.x, lm.y, 13, 0, R2); ctx.stroke(); });
+    ctx.strokeStyle = ba ? hexA(ba.weatherTint, .15) : 'rgba(200,214,240,.12)'; ctx.beginPath(); ctx.arc(lm.x, lm.y, 13, 0, R2); ctx.stroke(); });
   if (lay.accents) lay.accents.forEach(ac => { ctx.strokeStyle = 'rgba(150,175,255,.16)'; ctx.lineWidth = 1.4; ctx.setLineDash([3, 5]);
     ctx.beginPath(); ctx.arc(ac.x, ac.y, ac.k === 'kbox' ? 16 : 10, 0, R2); ctx.stroke(); ctx.setLineDash([]); });
 };
-const biomeHue = Rn => { const ti = G.D.tiers[Rn.tier - 1] || {};
+const biomeHue = Rn => { const ba = biomeArtOf(Rn); if (ba) return ba.weatherTint; // biomeArt owns the tint when authored
+  const ti = G.D.tiers[Rn.tier - 1] || {};
   return hue(({dawn:'arcane',ember:'fire',fire:'fire',frost:'ice',ice:'ice',water:'ice',storm:'storm',
     nature:'nature',jungle:'nature',void:'void',night:'void'})[(ti.soil || ti.biome || '').toLowerCase()] ||
     ['arcane','fire','ice','storm','nature','void'][(Rn.tier - 1) % 6]); };
@@ -4325,6 +4751,24 @@ const paintStatic = (ctx, Rn) => { const A = G.C.art, th = G.theme(), bh = biome
   const gg = ctx.createLinearGradient(0, -BAKE_PAD, 0, H + BAKE_PAD);    // 2-tone ground, baked = free
   gg.addColorStop(0, cfm.ground || th.bg2 || '#101626'); gg.addColorStop(1, th.bg || '#0b0f1a');
   ctx.fillStyle = gg; ctx.fillRect(-BAKE_PAD, -BAKE_PAD, W + BAKE_PAD * 2, H + BAKE_PAD * 2);
+  const ba = biomeArtOf(Rn);                                             // biomeArt tints (MAPS-VERDICT #9) — baked = free
+  if (ba) {
+    const sg = ctx.createLinearGradient(0, -BAKE_PAD, 0, H * .45);       // sky air settles from the top
+    sg.addColorStop(0, hexA(ba.sky, .13)); sg.addColorStop(1, hexA(ba.sky, 0));
+    ctx.fillStyle = sg; ctx.fillRect(-BAKE_PAD, -BAKE_PAD, W + BAKE_PAD * 2, H * .45 + BAKE_PAD);
+    const gr = ctx.createLinearGradient(0, H * .38, 0, H + BAKE_PAD);    // ground body rises from the soil
+    gr.addColorStop(0, hexA(ba.ground, 0)); gr.addColorStop(1, hexA(ba.ground, .16));
+    ctx.fillStyle = gr; ctx.fillRect(-BAKE_PAD, H * .38, W + BAKE_PAD * 2, H * .62 + BAKE_PAD * 2);
+    const fr = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .42, W / 2, H / 2, Math.max(W, H) * .78);
+    fr.addColorStop(0, hexA(ba.fog, 0)); fr.addColorStop(1, hexA(ba.fog, .11)); // fog rims the air before the dark vignette takes the edge
+    ctx.fillStyle = fr; ctx.fillRect(-BAKE_PAD, -BAKE_PAD, W + BAKE_PAD * 2, H + BAKE_PAD * 2);
+    const _n = parseInt(ba.sky.slice(1), 16), _lum = (_n >> 16 & 255) * .299 + (_n >> 8 & 255) * .587 + (_n & 255) * .114;
+    if (_lum < 56) { ctx.globalCompositeOperation = 'screen';               // dark-palette biomes: screen-lift the air or the authored sky/ground never paints over the near-black base
+      const dg = ctx.createLinearGradient(0, -BAKE_PAD, 0, H * .5);
+      dg.addColorStop(0, hexA(ba.weatherTint, .10)); dg.addColorStop(1, hexA(ba.weatherTint, 0));
+      ctx.fillStyle = dg; ctx.fillRect(-BAKE_PAD, -BAKE_PAD, W + BAKE_PAD * 2, H * .5 + BAKE_PAD);
+      ctx.globalCompositeOperation = 'source-over'; }
+  }
   const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .75);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.4)');
   ctx.fillStyle = vg; ctx.fillRect(-BAKE_PAD, -BAKE_PAD, W + BAKE_PAD * 2, H + BAKE_PAD * 2);
@@ -4356,8 +4800,10 @@ const paintStatic = (ctx, Rn) => { const A = G.C.art, th = G.theme(), bh = biome
     ctx.beginPath(); ctx.arc(n.x, n.y, 9, 0, R2); ctx.stroke(); ctx.shadowBlur = 0;
     if (ty === 'contested') { ctx.strokeStyle = 'rgba(240,207,130,.5)'; ctx.beginPath(); ctx.arc(n.x, n.y, 13, 0, R2); ctx.stroke(); }
     if (ty === 'twin') { ctx.strokeStyle = 'rgba(212,169,78,.5)'; ctx.beginPath(); ctx.arc(n.x, n.y, 5, 0, R2); ctx.stroke(); } });
-  Rn.towers.forEach(t => { const sz = 44, st = t.st || 1;
-    G.drawIcon(ctx, 'tower', t.tw.id, sz, {x: t.x - sz / 2, y: t.y - sz / 2, el: t.tw.el, baked: 1});
+  Rn.towers.forEach(t => { const sz = 44, st = t.st || 1, ch = G.sim.masteryCh(G.S, t.tw.id);
+    G.drawIcon(ctx, 'tower', t.tw.id, sz, {x: t.x - sz / 2, y: t.y - sz / 2, el: t.tw.el, baked: 1, evo: ch});
+    if (ch >= 3) { ctx.strokeStyle = GOLD; ctx.lineWidth = 1.6;           // FORGED ring — gold is reward-only; 100% mastery IS the reward
+      ctx.beginPath(); ctx.arc(t.x, t.y, sz / 2 + 2.5, 0, R2); ctx.stroke(); }
     if (st > 1) { const slot = sz / 5, by = t.y + sz / 2 + 2;             // STACK bricks (META-DESIGN): 1 per stack, L→R, 5 span full width
       for (let i = 0; i < st; i++) { const bx0 = t.x - sz / 2 + i * slot + .6;
         ctx.fillStyle = hue(t.tw.el); ctx.globalAlpha = .92; ctx.fillRect(bx0, by, slot - 1.2, 4.5);
@@ -4367,7 +4813,7 @@ const paintStatic = (ctx, Rn) => { const A = G.C.art, th = G.theme(), bh = biome
 };
 rd.bake = {cv: null, ctx: null, key: null, w: 0, h: 0};
 rd._bakeKey = Rn => { let sig = Rn.towers.length;
-  for (const t of Rn.towers) sig = (Math.imul(sig, 131) + (t.upLvl | 0) * 7 + (((t.st || 1) - 1) * 997) + (t.route[0] * 25 + t.route[1] * 5 + t.route[2]) + ((t.x + t.y * 1000) | 0)) | 0;
+  for (const t of Rn.towers) sig = (Math.imul(sig, 131) + (t.upLvl | 0) * 7 + (((t.st || 1) - 1) * 997) + G.sim.masteryCh(G.S, t.tw.id) * 31 + (t.route[0] * 25 + t.route[1] * 5 + t.route[2]) + ((t.x + t.y * 1000) | 0)) | 0;
   return Rn.lay.staticKey + '|' + ((G.S && G.S.opt.theme) || 'aurora') + '|' + sig; };
 rd.rebake = () => { const Rn = G.R; if (!Rn || !rd.ctx) return;
   const bw = Rn.lay.W + BAKE_PAD * 2, bh = Rn.lay.H + BAKE_PAD * 2; let bc = rd.bake.cv;
@@ -4429,7 +4875,8 @@ const drawDynamic = (ctx, Rn, lod) => { const A = G.C.art;
   Rn.enemies.forEach(e => { if (!e.alive) return;
     const cat = e.d.cat || 'fodder', col = CATCOL[cat] || '#9fc4ff';
     const sz = e.elite ? 40 : 26;
-    const flags = (e.camo ? 'c' : '') + (e.fly ? 'f' : '') + (e.d.cat === 'immune' || e.d.fx.immune ? 'i' : '');
+    const tg = e.d.tags, flags = (e.camo ? 'c' : '') + (e.fly ? 'f' : '') + (e.d.cat === 'immune' || e.d.fx.immune ? 'i' : '')
+      + (tg ? (tg.includes('frostward') ? 'w' : '') + (tg.includes('regen') ? 'r' : '') + (tg.includes('fortified') ? 'o' : '') + (tg.includes('berserk') ? 'b' : '') : '');
     if (e.phased) ctx.globalAlpha = .3;
     G.drawIcon(ctx, 'enemy', e.d.id, sz, {x: e.x - sz / 2, y: e.y - sz / 2, col, sil: e.d.sil, cat, flags});
     if (Q.tier === 2 && Rn.t - e.lastHit < .07) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .5; // hit flash (full quality only)
@@ -4441,7 +4888,8 @@ const drawDynamic = (ctx, Rn, lod) => { const A = G.C.art;
       ctx.fillStyle = 'rgba(8,12,24,.7)'; ctx.fillRect(e.x - 12, e.y - sz * .6 - 4, 24, 3);
       ctx.fillStyle = f > .5 ? '#57e6b7' : (f > .25 ? '#ffe066' : '#ff6b6b'); ctx.fillRect(e.x - 12, e.y - sz * .6 - 4, 24 * f, 3); }
     if (e.elite && lod > 0) { ctx.strokeStyle = 'rgba(255,212,121,.9)'; ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.arc(e.x, e.y, sz * .58, 0, R2); ctx.stroke(); } });
+      ctx.beginPath(); ctx.arc(e.x, e.y, sz * .58, 0, R2); ctx.stroke(); }
+    if (lod > 0) statusRow(ctx, e, sz); });                                  // live status badges (sweep D2)
   const b = Rn.boss;
   if (b && b.alive) { let bsz = 84;
     if (b._slam != null && b._slam < .55) { const f = b._slam / .55;     // SLAM: 1.5→.97→1 cubic-bezier feel
@@ -4450,7 +4898,8 @@ const drawDynamic = (ctx, Rn, lod) => { const A = G.C.art;
     if (b.untargetable) ctx.globalAlpha = .35;
     const bcat = b.def.sil === 'crown' || b.def.sil === 'monarch' ? 'elite' : 'tank';
     G.drawIcon(ctx, 'enemy', b.def.id, bsz, {x: b.x - bsz / 2, y: b.y - bsz / 2,
-      col: b.enraged ? '#ff6b6b' : (b.mod ? hue('void') : hue(BOSSHUE[b.def.id] || 'fire')), sil: b.def.sil, cat: bcat, flags: b.fly && !b.landed ? 'f' : ''});
+      col: b.enraged ? '#ff6b6b' : shade(b.mod ? hue('void') : hue(BOSSHUE[b.def.id] || 'fire'), -(b.phase || 0) * .09), // phase = armor-shed menace tint
+      sil: b.def.sil, cat: bcat, flags: b.fly && !b.landed ? 'f' : ''});
     ctx.save(); ctx.globalCompositeOperation = 'lighter';                // eye ember — alive, no blur
     ctx.drawImage(spot(b.enraged ? '#ff6b6b' : GOLD), b.x + bsz * .1, b.y - bsz * .18, 9, 9); ctx.restore();
     ctx.globalAlpha = 1;
@@ -4464,7 +4913,8 @@ const drawDynamic = (ctx, Rn, lod) => { const A = G.C.art;
     ctx.fillStyle = b.armorOn ? '#9fc4ff' : '#ff6b6b'; rr(bx, by, bw * f, 6, 2); ctx.fill();                       // main
     ctx.strokeStyle = 'rgba(240,207,130,.55)'; ctx.lineWidth = 1; rr(bx - 1, by - 1, bw + 2, 8, 2.5); ctx.stroke();
     ctx.fillStyle = 'rgba(10,13,24,.9)';
-    for (let i = 1; i < 4; i++) ctx.fillRect(bx + bw * i / 4, by, 1, 6); }                                          // segment ticks
+    for (let i = 1; i < 4; i++) ctx.fillRect(bx + bw * i / 4, by, 1, 6);                                            // segment ticks
+    if (lod > 0) statusRow(ctx, b, bsz * .78); }                                                                    // boss DoT/status badges
   Rn.zones.forEach(z => { const zc = z.el ? hue(z.el) : '#a56bff';
     ctx.save(); ctx.globalAlpha = .13; ctx.fillStyle = zc; ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, R2); ctx.fill(); ctx.restore();
     ctx.strokeStyle = zc; ctx.globalAlpha = .5; ctx.setLineDash([4, 6]);
@@ -4600,7 +5050,7 @@ G.applyTheme = () => { const th = G.theme(), rt = document.documentElement;
    (renderHud rebuilds innerHTML @4Hz; a live <canvas> would be wiped every rebuild). Keyed by
    kind|id|px|col; applyTheme flushes so theme/quality swaps re-bake. */
 const CURICO = {};
-const icoImg = G.ui.icoImg = (kind, id, px, o) => { o = o || {}; const k = kind + '|' + id + '|' + px + '|' + (o.col || '') + '|' + (o.evo || ''); // evo in key: evolved looks must not collide (evolayer §6)
+const icoImg = G.ui.icoImg = (kind, id, px, o) => { o = o || {}; const k = kind + '|' + id + '|' + px + '|' + (o.col || '') + '|' + (o.evo || '') + '|' + (o.st || ''); // evo/st in key: evolved looks + path-tile states must not collide (evolayer §6 / path §4)
   if (!CURICO[k]) { const d = Math.min((typeof devicePixelRatio !== 'undefined' && devicePixelRatio) || 1, 2),
       cv = document.createElement('canvas'); cv.width = cv.height = Math.round(px * d);
     const x = cv.getContext('2d'); x.scale(d, d); G.drawIcon(x, kind, id, px, o);
@@ -4613,6 +5063,8 @@ G.ui.renderHud = () => { const R = G.R, S = G.S, el = $('#hud'); if (!R) return;
   const md = G.D.modes[R.mode], ti = D().tiers[R.tier - 1], mp = ti.maps[R.mapIdx];
   const bossNow = R.boss && R.boss.alive, nextBoss = (Math.floor(R.round / 10) + 1) * 10;
   const fam = D().familiars.list.find(f => f.id === S.familiars.bound), fl = fam && S.familiars.owned[fam.id];
+  const hd = R.hero && D().heroes.list.find(x => x.id === R.hero.id);           // HERO chip (item 8): hero + familiar BOTH on HUD
+  const hPips = hd ? D().heroes.system.spikeAt.map(a => R.hero.lvl >= a ? '●' : '○').join('') : '';
   let evLive = null; try { evLive = G.liveops && G.liveops.activeEvents(S).find(e => e.live); } catch (e) {}
   const hpR = Math.max(0, Math.min(1, BN.ratio(R.spire.hp, R.spire.hpMax)));
   const wdR = Math.max(0, Math.min(1, BN.ratio(R.spire.ward, R.spire.wardMax)));
@@ -4621,7 +5073,8 @@ G.ui.renderHud = () => { const R = G.R, S = G.S, el = $('#hud'); if (!R) return;
       <span class="chip cur"><span class="ico">${curIco('essence')}</span><b class="val num">${fmt(R.essence)}</b><span class="lbl">ESSENCE</span></span>
       <span class="chip cur"><span class="ico">${curIco('mana')}</span><b class="val num">${fmt(S.mana)}</b><span class="lbl">MANA</span></span>
       <span class="sp"></span>
-      <span class="wavepill"><span class="wl">WAVE</span><b class="num">${R.round}</b><em class="bmark${bossNow ? ' now' : ''}">${bossNow ? 'BOSS' : 'BOSS ' + nextBoss + ' ›'}</em></span>
+      ${R.raid ? `<span class="wavepill raid"><span class="wl">⚔ RAID</span><b class="num">W${Math.max(1, R.round - 109)}</b><em class="bmark now">${bossNow ? 'BOSS' : 'CLEAR!'}</em></span>`
+        : `<span class="wavepill"><span class="wl">WAVE</span><b class="num">${R.round}</b><em class="bmark${bossNow ? ' now' : ''}">${bossNow ? 'BOSS' : 'BOSS ' + nextBoss + ' ›'}</em></span>`}
     </div>
     <div id="hpwrap">
       <div class="barline"><span class="bl">◆ SPIRE</span><span class="bar hp"><i style="transform:scaleX(${hpR})"></i></span><b class="bv num">${fmt(R.spire.hp)}/${fmt(R.spire.hpMax)}</b></div>
@@ -4633,17 +5086,25 @@ G.ui.renderHud = () => { const R = G.R, S = G.S, el = $('#hud'); if (!R) return;
       <span class="chip"><b class="val num">${fmt(R.income)}</b>/s</span>
       <button class="chip mode" id="modeBtn">${md.emoji} ${md.nm} ~${md.mult}×</button>
       <span class="sp"></span>
+      ${hd ? `<button class="famchip hero" id="heroChip"><span class="fico">${hd.emoji}</span><span class="ft"><b>${hd.nm.split(' ')[0].toUpperCase()}</b><em class="num">LV ${R.hero.lvl} ${hPips}</em></span></button>` : ''}
       <button class="famchip" id="famChip"><span class="fico">${(G.cosFx && G.cosFx().famIco) || (fam && fam.emoji) || '◉'}</span><span class="ft"><b>${fam ? fam.nm.toUpperCase() : '—'}</b><em>LV ${fl ? fl.lvl : 1}${fl && fl.awaken ? ' ★' + fl.awaken : ''}</em></span></button>
     </div>
     <div class="ctxstrip">
-      <span class="ctx">◆ T${R.tier} · ${ti.nm.toUpperCase()} — MAP ${mp.slot} · ${mp.nm.toUpperCase()} <em class="arch">${(mp.arch || '').toUpperCase()}${ROLE[mp.slot] ? ' · ' + ROLE[mp.slot] : ''}</em></span>
+      <span class="ctx">◆ T${R.tier} · ${ti.nm.toUpperCase()} — ${R.raid ? `⚔ RAID · ${(ti.bossNm || 'SIGNATURE BOSS').toUpperCase()} <em class="arch">ON MAP ${mp.slot}</em>` : `MAP ${mp.slot} · ${mp.nm.toUpperCase()} <em class="arch">${(mp.arch || '').toUpperCase()}${ROLE[mp.slot] ? ' · ' + ROLE[mp.slot] : ''}</em>`}</span>
       <span class="sp"></span>
+      ${R.round >= 2 && !R.over ? '<button class="chip retire" id="retireBtn">🏳 RETIRE</button>' : ''}
       <span class="speedpills">${[1, 2, 4, 6].map(s => `<button class="spd num${G.ui.speed === s ? ' on' : ''}" data-s="${s}">${s}×</button>`).join('')}</span>
     </div>`;
   $('#modeBtn').onclick = () => { const order = ['idle', 'balanced', 'active'];
     R.mode = order[(order.indexOf(R.mode) + 1) % 3]; S.opt.mode = R.mode; G.ui.toast(G.D.modes[R.mode].emoji + ' ' + G.D.modes[R.mode].nm); G.ui.renderHud(); };
   el.querySelectorAll('.spd').forEach(b => b.onclick = () => { G.ui.speed = +b.dataset.s; G.ui.renderHud(); });
   $('#famChip').onclick = () => { G.ui.tab = 'more'; G.ui.renderTabs(); G.ui.openSheet('familiars'); };
+  const hc = $('#heroChip'); if (hc) hc.onclick = () => { G.ui.tab = 'more'; G.ui.renderTabs(); G.ui.openSheet('heroes'); };
+  const rb = $('#retireBtn'); if (rb) rb.onclick = () => {               // endless-push RETIRE (DESIGN-FINAL-RUN 6): bank on your terms
+    const payR = R.raid ? Math.max(1, (R.round - 109) * 3) : R.round;    // raid retreat pays waves-survived (mirrors 07-sim endRun)
+    const manaN = Math.max(1, Math.floor(Math.pow(payR, 1.15) * (1 + R.kills / 500) * R.mods.manaGain));
+    G.ui.modal(R.raid ? 'Retreat from the raid?' : 'Retire & bank?', `<div class="wa-row"><span>${R.raid ? `Fall back at raid wave ${Math.max(1, R.round - 109)} — the boss keeps the tier` : `End the run at wave ${R.round} on your terms`}</span><b class="num">✦ ~${fmt(BN.from(manaN))} Mana</b></div>`,
+      [{nm: R.raid ? 'RETREAT & BANK' : 'RETIRE & BANK', cls: 'buy', fn: () => G.sim.endRun(R, 'retire')}, {nm: 'Keep fighting'}]); };
   const bb = $('#bossbar'), b = R.boss;
   if (b && b.alive) { bb.classList.add('on');
     bb.querySelector('.bname').textContent = (b.mod ? b.mod.nm + ' · ' : '') + (R.round % 50 === 0 ? 'TIER BOSS — ' : 'BOSS — ') + b.d.nm;
@@ -4658,10 +5119,10 @@ G.ui.renderTray = () => { const R = G.R, tray = $('#tray'); if (!R) return; tray
   tray.appendChild(h('div', 'slotchip num', `⬒ ${R.towers.length}/${R.slotMax || 5}`)); // TOWER SLOTS: instances used (a stack = 1 slot)
   const counts = {}; R.towers.forEach(t => { counts[t.tw.id] = (counts[t.tw.id] | 0) + (t.st || 1); }); // a 5-stack counts as 5
   D().towers.filter(t => t.lv <= G.S.acct.lvl + 4).slice(0, 12).forEach(tw => {
-    const n = counts[tw.id] | 0, afford = BN.gte(R.essence, BN.from(tw.cost));
-    const c = h('button', 'tbtn el-' + tw.el + (afford ? ' afford' : '') + (n ? ' has' : '') +
+    const n = counts[tw.id] | 0, afford = BN.gte(R.essence, BN.from(tw.cost)), ch = G.sim.masteryCh(G.S, tw.id);
+    const c = h('button', 'tbtn el-' + tw.el + (afford ? ' afford' : '') + (n ? ' has' : '') + (ch >= 3 ? ' forged' : '') +
       ((open && G.ui.typeOpen === tw.id) || G.ui.placing === tw.id ? ' sel' : ''),
-      icoImg('tower', tw.id, 30, {el: tw.el}) + `<b class="tct num">×${n}</b>`);
+      icoImg('tower', tw.id, 30, {el: tw.el, evo: ch}) + `<b class="tct num">×${n}</b>`);
     c.dataset.cost = tw.cost; c.title = tw.nm + ' — ◆ ' + tw.cost;
     c.onclick = () => G.ui.openTypePanel(tw.id);
     c.ondblclick = () => { G.sim.autoPlace(R, tw.id) ? G.ui.toast(tw.nm + ' placed') : G.ui.toast(G.ui.placeFailMsg(R), 'warn'); G.ui.renderTray(); };
@@ -4705,7 +5166,7 @@ G.ui.stackFlow = (R, twId, tgt) => {
 };
 /* ================= ult bar (glyph + cooldown sweep + state — fits the 52px slot) ============ */
 G.ui.renderUlts = () => { const R = G.R, el = $('#ults'); if (!R) return; el.innerHTML = '';
-  G.S.slotted.slice(0, 5).forEach(id => { const u = D().ults.find(u => u.id === id), st = R.ults[id];
+  G.S.slotted.slice(0, D().ultUp.maxSlots).forEach(id => { const u = D().ults.find(u => u.id === id), st = R.ults[id]; // §6b: ~3 equipped
     const su = G.S.ults[id] = G.S.ults[id] || {lvl: 0, auto: 0};
     const ready = st.cd <= 0;
     const c = h('button', 'ult el-' + u.el + (ready ? ' ready' : ''),
@@ -4716,26 +5177,35 @@ G.ui.renderUlts = () => { const R = G.R, el = $('#ults'); if (!R) return; el.inn
     el.appendChild(c); });
 };
 /* ================= run-end screens (DESIGN-NEEDS-V2 §5) — Defeat / Victory summary =========== */
-G.ui.runEnd = p => { const R = p.R, S = G.S, died = R.over === 'death', cleared = !!p.cleared;
+G.ui.runEnd = p => { const R = p.R, S = G.S, died = R.over === 'death', cleared = !!p.cleared, raidWin = !!p.raidWin, tierUp = !!p.tierUp;
+  const ti = D().tiers[R.tier - 1], raidW = R.raid ? Math.max(1, R.round - 109) : 0;
+  const all3 = [0, 1, 2].every(i => S.tiers.cleared[R.tier + '_' + i]),
+        raidReady = !R.raid && all3 && !(S.tiers.raid && S.tiers.raid[R.tier]) && (S.tiers.unlocked | 0) === R.tier; // the triad just completed → the gate ceremony is NEXT
   let re = $('#runend'); if (!re) { re = document.createElement('div'); re.id = 'runend'; document.body.appendChild(re); }
   const stat = (l, v) => `<div class="rerow"><span>${l}</span><b class="num">${v}</b></div>`;
-  re.className = died ? 'death' : 'clear';
+  re.className = (died ? 'death' : 'clear') + (R.raid ? ' raid' : '');
   re.innerHTML = `<div class="replate">
     <div class="respire">${G.ui.icoImg('spire', 'spire', 72, {})}</div>
-    <h1>${died ? 'THE SPIRE HAS FALLEN' : (cleared ? 'MAP CLEARED' : 'RUN COMPLETE')}</h1>
-    <p class="resub">${died ? `Wave ${R.round} — the ward broke on T${R.tier}.` : `Wave ${R.round} — T${R.tier} ${cleared ? 'conquered' : 'banked'}.`}</p>
+    <h1>${died ? (R.raid ? 'THE RAID HOLDS' : 'THE SPIRE HAS FALLEN') : raidWin ? '⚔ RAID CLEARED' : (cleared ? 'MAP CLEARED' : 'RUN COMPLETE')}</h1>
+    <p class="resub">${died ? (R.raid ? `${ti.bossNm} holds T${R.tier} — raid wave ${raidW}.` : `Wave ${R.round} — the ward broke on T${R.tier}.`)
+      : raidWin ? `${ti.bossNm} falls on ${R.map.nm}${tierUp ? ` — TIER ${R.tier + 1} UNLOCKED` : ' — signature replay'}.`
+      : `Wave ${R.round} — T${R.tier} ${cleared ? 'conquered' : 'banked'}.`}</p>
     <div class="reward"><span class="ico">${curIco('mana', 16)}</span><b class="num">+${fmt(p.mana)}</b><span class="lbl">MANA</span>
-      ${p.newBest ? '<em class="best">NEW BEST</em>' : ''}${cleared ? '<em class="gclear">CLEARED</em>' : ''}</div>
-    <div class="restats">${stat('Waves held', R.round)}${stat('Kills', fmt(R.kills))}${stat('Boss kills', (R.stats.bossKills | 0))}${stat('Damage dealt', fmt(R.stats.dmg))}${stat('Overkills', (R.stats.overkills | 0))}</div>
-    <div class="rects"><button class="btn" id="reAgain">${died ? 'TRY AGAIN' : 'RUN AGAIN'}</button>${cleared
-      ? '<button class="btn pri" id="reNext">NEXT MAP</button>'
+      ${p.newBest ? '<em class="best">NEW BEST</em>' : ''}${raidWin ? '<em class="gclear">⚔ RAID</em>' : cleared ? '<em class="gclear">CLEARED</em>' : ''}</div>
+    <div class="restats">${stat('Waves held', R.raid ? raidW : R.round)}${R.hero ? stat('Hero level', 'LV ' + R.hero.lvl) : ''}${stat('Kills', fmt(R.kills))}${stat('Boss kills', (R.stats.bossKills | 0))}${stat('Damage dealt', fmt(R.stats.dmg))}${stat('Overkills', (R.stats.overkills | 0))}</div>
+    <div class="rects"><button class="btn" id="reAgain">${died ? 'TRY AGAIN' : R.raid ? 'RAID AGAIN' : 'RUN AGAIN'}</button>${
+      raidWin && tierUp ? '<button class="btn pri" id="reNext">NEXT TIER</button>'
+      : raidReady && !died ? '<button class="btn pri" id="reRaid">⚔ ENTER THE RAID</button>'
+      : cleared ? '<button class="btn pri" id="reNext">NEXT MAP</button>'
       : '<button class="btn" id="reBack">BACK TO SPIRE</button>'}</div>
   </div>`;
   re.classList.add('on');
-  $('#reAgain').onclick = () => { re.classList.remove('on'); G.main.newRun({tier: R.tier, mapIdx: R.mapIdx}); };
-  const nx = $('#reNext'); if (nx) nx.onclick = () => { const nm = R.mapIdx < 2 ? R.mapIdx + 1 : 0,
-      nt = R.mapIdx < 2 ? R.tier : Math.min(R.tier + 1, (S.tiers && S.tiers.unlocked) || R.tier);
-    re.classList.remove('on'); G.main.newRun({tier: nt, mapIdx: nm}); };
+  $('#reAgain').onclick = () => { re.classList.remove('on'); G.main.newRun({tier: R.tier, mapIdx: R.mapIdx, raid: R.raid ? 1 : 0}); };
+  const nx = $('#reNext'); if (nx) nx.onclick = () => { re.classList.remove('on');
+    if (raidWin) { G.main.newRun({tier: Math.min(R.tier + 1, (S.tiers && S.tiers.unlocked) || R.tier), mapIdx: 0}); return; }
+    const nm = R.mapIdx < 2 ? R.mapIdx + 1 : 0, nt = R.mapIdx < 2 ? R.tier : Math.min(R.tier + 1, (S.tiers && S.tiers.unlocked) || R.tier);
+    G.main.newRun({tier: nt, mapIdx: nm}); };
+  const rd = $('#reRaid'); if (rd) rd.onclick = () => { re.classList.remove('on'); G.main.newRun({tier: R.tier, mapIdx: R.mapIdx, raid: 1}); };
   const bk = $('#reBack'); if (bk) bk.onclick = () => re.classList.remove('on');
 };
 G.bus.on('runEnd', p => setTimeout(() => G.ui.runEnd(p), 650));   // beat: let the last moment land first
@@ -4771,20 +5241,33 @@ G.ui.sheets = {
       const row = h('div', 'row card sel-tower', `<div class="fill"><b>${g.t.tw.nm} ×${g.n}</b><span class="sub num">RUN LV ${lvl} · route ${g.t.route.join('-')}</span></div>`);
       row.onclick = () => G.ui.openTypePanel(g.t.tw.id, g.t); b.appendChild(row); });
     if (!R.towers.length) b.appendChild(h('div', 'card sub', 'No towers yet — pick a type below and PLACE.')); },
-  ults(b) { const S = G.S;
-    D().ults.forEach(u => { const su = S.ults[u.id] || {lvl: 0}; const slotted = S.slotted.includes(u.id);
+  ults(b) { const S = G.S, MX = D().ultUp.maxSlots;
+    b.appendChild(h('div', 'card sub', `LOADOUT: <b>${S.slotted.length}/${MX} equipped</b> — each ult fires AUTO (on cooldown, AFK-safe) or MANUAL (hold-and-sync for bosses).`));
+    const cbal = h('div', 'card sub num', `⬢ <b>${S.shards | 0}</b> Ultimate Cores`); cbal.title = 'Earned from boss clears + daily drip · spent ONLY on ultimates (§4 hard-siloed)'; b.appendChild(cbal);
+    D().ults.forEach(u => { const su = S.ults[u.id] = S.ults[u.id] || {lvl: 0}; const slotted = S.slotted.includes(u.id);
+      const un = su.un || (su.lvl | 0) > 0 || slotted;                   // grandfather leveled/slotted ults from pre-§4 saves
       const cost = D().ultUp.shardCost(su.lvl | 0);
-      const row = h('div', 'row card', `<div class="fill"><b>${EG[u.el] || '✦'} ${u.nm}</b><span class="sub">${u.d} · ${u.cd}s</span><em class="pill">Lv ${su.lvl | 0}</em></div>`);
-      const up = h('button', 'btn sm', '◇ ' + cost);
-      up.onclick = () => { if (S.shards < cost) return G.ui.toast('Need Shards', 'warn');
-        S.shards -= cost; S.ults[u.id] = su; su.lvl = (su.lvl | 0) + 1; G.ui.openSheet('ults'); };
+      const row = h('div', 'row card' + (slotted ? ' bR' : (un ? '' : ' locked')), `<div class="fill"><b>${EG[u.el] || '✦'} ${u.nm}</b><span class="sub">${u.d} · ${u.cd}s</span><em class="pill">${un ? 'Lv ' + (su.lvl | 0) : 'LOCKED'}</em></div>`);
+      if (!un) { const ub = h('button', 'btn sm gold', '⬢ ' + D().ultUp.unlockCost + ' Unlock');
+        ub.onclick = () => { if (S.shards < D().ultUp.unlockCost) return G.ui.toast('Need Ultimate Cores', 'warn');
+          S.shards -= D().ultUp.unlockCost; su.un = 1; G.ui.toast(u.nm + ' unlocked!', 'good'); G.ui.openSheet('ults'); };
+        row.appendChild(ub); b.appendChild(row); return; }
+      const up = h('button', 'btn sm', '⬢ ' + cost);
+      up.onclick = () => { if (S.shards < cost) return G.ui.toast('Need Ultimate Cores', 'warn');
+        S.shards -= cost; su.lvl = (su.lvl | 0) + 1; G.ui.openSheet('ults'); };
+      if (slotted) { const am = h('button', 'btn sm ' + (su.auto ? 'buy' : 'ghost'), su.auto ? 'AUTO ⟳' : 'MANUAL ✋'); // item 9: per-ult toggle is a REAL control (right-click on the HUD = shortcut)
+        am.title = 'AUTO fires on cooldown (AFK); MANUAL saves it for your timing. Idle mode auto-fires everything.';
+        am.onclick = () => { su.auto = su.auto ? 0 : 1; G.ui.toast(u.nm + (su.auto ? ' → AUTO' : ' → MANUAL')); G.ui.openSheet('ults'); G.ui.renderUlts(); };
+        row.appendChild(am); }
+      row.appendChild(up);
       const slot = h('button', 'btn sm ghost', slotted ? 'Unslot' : 'Slot');
       slot.onclick = () => { if (slotted) S.slotted = S.slotted.filter(x => x !== u.id);
-        else if (S.slotted.length < D().ultUp.maxSlots) S.slotted.push(u.id); else return G.ui.toast('5 slots max', 'warn');
+        else if (S.slotted.length < MX) S.slotted.push(u.id); else return G.ui.toast(MX + ' slots max — unslot one first', 'warn');
         G.ui.openSheet('ults'); G.ui.renderUlts(); };
-      row.appendChild(up); row.appendChild(slot); b.appendChild(row); }); },
+      row.appendChild(slot); b.appendChild(row); }); },
   more(b) { // consolidated meta destinations (Settings/Social reachable — audit P0)
-    [['maps', '🗺 Maps', '20 tiers · A/B/C triangle · advance gates'],
+    [['maps', '🗺 Maps', '20 tiers · A/B/C triangle · ⚔ raid gates'],
+     ['heroes', '⟠ Heroes', 'One per run · auto-levels 1→20 · spikes 3/7/12/20'],
      ['codex', '✦ Codex', 'Permanent Mana research'], ['foundry', '⚒ Foundry', 'Permanent tower forging'],
      ['permtrack', '💠 Family Tracks', 'Mana — raise each family\'s start level'],
      ['runes', '⬡ Runes', '6 slots · craft with pity · substats'],
@@ -4831,7 +5314,10 @@ G.ui.openTypePanel = (twId, inst) => { const R = G.R; if (!R) return;
     row.appendChild(h('div', 'tpinfo', `<b>${p.nm}${lv === 5 ? ' ★' : ''}</b><span class="tpt">${lv >= 5 ? 'T5 · ' + ((p.t[4] && p.t[4].u) || 'ULTIMATE')
       : 'T' + lv + '/5' + (lv === 4 ? ' · NEXT: ' + ((p.t[4] && p.t[4].u) || 'ULTIMATE') : '')}</span>`));
     const pips = h('div', 'tpips');
-    for (let k = 0; k < 5; k++) pips.appendChild(h('i', 'pip' + (k < lv ? ' own' : k === lv && !locked && n && lv < 5 ? ' next' : '') + (k === 4 ? ' ult' : '')));
+    for (let k = 0; k < 5; k++) { const pst = k < lv ? 'own' : (k === lv && !locked && n && lv < 5) ? 'next' : 'dim';
+      /* effect-glyph tiles (DESIGN-NEEDS-V2 §4): the ladder reads by ART — dim tiles are the info scent */
+      pips.appendChild(h('i', 'pipg' + (pst !== 'dim' ? ' ' + pst : '') + (k === 4 ? ' ult' : ''),
+        icoImg('path', twId + '.' + pi + '.' + k, 18, {st: pst}))); }
     row.appendChild(pips);
     if (!n) row.appendChild(h('span', 'tplock', 'PLACE<br>FIRST'));
     else if (locked) row.appendChild(h('span', 'tplock', lv === 0 ? 'LOCKED<br>2 PATHS MAX' : 'LOCKED<br>ONE PAST T2'));
@@ -4963,12 +5449,19 @@ Object.assign(G.ui.sheets, {
         const cost = BN.from(bk.base * Math.pow(D().codex.costGrowth, lvl));
         const r = row(b, `<div class="fill"><span>${l.nm}</span><em class="pill">Lv ${lvl}${l.cap ? ' · cap ' + Math.round(l.cap * 100) + '%' : ''}</em></div>`);
         r.appendChild(btn('✦ ' + fmt(cost), 'sm buy', () => { G.sim.buyCodex(S, bk.id, l.id) ? G.ui.openSheet('codex') : G.ui.toast('Need Mana', 'warn'); })); }); }); },
-  foundry(b) { const S = G.S;
-    b.appendChild(h('div', 'card sub', '⚒ Permanent forging — survives every run. Cores drop from kills by the tower that lands them.'));
-    D().towers.filter(tw => (S.cores[tw.id] | 0) > 0 || S.foundry[tw.id]).concat(D().towers.slice(0, 8)).filter((tw, i, a) => a.indexOf(tw) === i).slice(0, 24).forEach(tw => {
-      const c = S.cores[tw.id] | 0, f = S.foundry[tw.id] || {};
-      const r = row(b, `<div class="fill"><b>${tw.nm}</b><span class="sub num">⬢ ${c} cores · d${f.d | 0} rt${f.rt | 0} rg${f.rg | 0}</span></div>`);
-      ['d', 'rt', 'rg'].forEach(n => r.appendChild(btn('+' + n, 'sm', () => { G.sim.buyFoundry(S, tw.id, n) ? G.ui.openSheet('foundry') : G.ui.toast('Need Cores', 'warn'); }))); });
+  foundry(b) { const S = G.S, B = D().balance.mastery;
+    b.appendChild(h('div', 'card sub', '⚒ Permanent forging — survives every run. Cores drop from kills by the tower that lands them. The 12-node MASTERY SPINE opens placed towers pre-built (33/66/100% → route tier 1/3/5 on your committed path).'));
+    D().towers.filter(tw => (S.cores[tw.id] | 0) > 0 || S.foundry[tw.id] || (S.mastery && S.mastery[tw.id])).concat(D().towers.slice(0, 8)).filter((tw, i, a) => a.indexOf(tw) === i).slice(0, 24).forEach(tw => {
+      const c = S.cores[tw.id] | 0, f = S.foundry[tw.id] || {}, n = (S.mastery && S.mastery[tw.id]) | 0;
+      const ch = G.sim.masteryCh(S, tw.id), pct = Math.round(n / B.nodes * 100), cost = G.sim.masteryCost(S, tw.id);
+      const pips = Array.from({length: B.nodes}, (_, i) => `<i class="pip${i < n ? ' on' : ''}${i > 0 && i % 4 === 0 ? ' gap' : ''}"></i>`).join('');
+      const r = row(b, `<div class="fill"><b>${tw.nm}${ch >= 3 ? ' <em class="pill gold">★ FORGED</em>' : ''}</b><span class="sub num">⬢ ${c} cores · spine ${pct}%${ch > 0 ? ` · opens T${B.tiers[ch - 1]}` : ''} · d${f.d | 0} rt${f.rt | 0} rg${f.rg | 0}</span><span class="spine">${pips}</span></div>`);
+      if (cost != null) { const need = B.gates[Math.floor(n / 4)] | 0, locked = (S.stats.bosses | 0) < need;
+        r.appendChild(btn(locked ? `🔒 ${need} bosses` : '⬢ ' + cost, 'sm ' + (locked ? 'ghost' : 'buy'), () => {
+          G.sim.buyMastery(S, tw.id) ? G.ui.openSheet('foundry') : G.ui.toast(locked ? `Chapter locked — defeat ${need} bosses (${S.stats.bosses | 0} so far)` : 'Need Cores', 'warn'); })); }
+      if (ch > 0) { const pv = (S.masteryPath && S.masteryPath[tw.id]) | 0;                    // committed pre-build path (insta contract §4)
+        r.appendChild(btn('P' + (pv + 1), 'sm ghost', () => { (S.masteryPath = S.masteryPath || {})[tw.id] = (pv + 1) % 3; G.ui.openSheet('foundry'); })); }
+      ['d', 'rt', 'rg'].forEach(nd => r.appendChild(btn('+' + nd, 'sm', () => { G.sim.buyFoundry(S, tw.id, nd) ? G.ui.openSheet('foundry') : G.ui.toast('Need Cores', 'warn'); }))); });
     row(b, `<div class="fill"><b>Ley-Lines</b><span class="sub">research — stacks uncapped</span></div>`);
     D().leylines.lines.forEach(l => { const lvl = G.S.leylines[l.id] | 0;
       const r = row(b, `<div class="fill"><span>${l.nm}</span><em class="pill">Lv ${lvl}</em></div>`);
@@ -5046,19 +5539,37 @@ Object.assign(G.ui.sheets, {
     eps.forEach((ep, i) => { if (i < un)
         row(b, `<div class="fill"><b>Ep ${i + 1} · ${ep.nm}</b><span class="sub" style="font-size:12.5px;line-height:1.45">${ep.tx}</span><em class="sub" style="color:var(--gilt)">${ep.st}</em></div>`);
       else row(b, `<div class="fill"><b style="opacity:.6">Ep ${i + 1} · ???</b><span class="sub">unlocks S${ep.s} · biweekly drop</span></div>`); }); },
+  /* ---------- HEROES (DESIGN-FINAL-RUN 8, §6a) — roster · pick per run · spike arcs ---------- */
+  heroes(b) { const S = G.S, R = G.R, sys = D().heroes.system;
+    const SRC = {pass: 'SEASON PASS CAPSTONE', event: 'EVENT SHOP', guild: 'GUILD SHOP', shop: 'STORE'};
+    b.appendChild(h('div', 'card sub', 'ONE hero per run — auto-levels <b>1→20</b> (+1/kill, +10·wave), ability spikes at <b>3 / 7 / 12 / 20</b>. Familiar is a separate passive aura — bring both.'));
+    D().heroes.list.forEach(hd => { const owned = !!(S.heroes.owned || {})[hd.id], picked = S.heroes.picked === hd.id;
+      const live = picked && R && R.hero && R.hero.id === hd.id;
+      const spikes = hd.spikes.map(s => `<em class="sub" style="display:block">L${s.at} — ${s.d}</em>`).join('');
+      const r = row(b, `<div class="fill"><b style="${owned ? '' : 'opacity:.55'}">${hd.emoji} ${hd.nm}${picked ? ' <em class="pill gold">PICKED</em>' : ''}${live ? ` <em class="pill num">LV ${R.hero.lvl}</em>` : ''}</b>
+        <span class="sub">${hd.role} · ${hd.el.toUpperCase()} — ${hd.d}</span>${spikes}</div>`, picked ? 'bR' : (owned ? '' : 'locked'));
+      if (owned && !picked) r.appendChild(btn('Pick', 'sm buy', () => { S.heroes.picked = hd.id; G.ui.toast(hd.nm + ' picked — leads your NEXT run'); G.ui.openSheet('heroes'); }));
+      if (!owned) r.appendChild(h('em', 'pill', SRC[hd.src] || 'LOCKED')); }); },
   /* ---------- MAPS — 20 tiers × A/B/C strategic triangle + advance tri-lock ---------- */
   maps(b) { const S = G.S, R = G.R;
-    b.appendChild(h('div', 'card sub', 'Advance = <b>R100 on all 3 maps + tier boss</b>. [A] Economy · [B] Skill (Long-Exposure) · [C] Gauntlet.'));
+    b.appendChild(h('div', 'card sub', 'Advance = <b>R100 on all 3 maps → ⚔ RAID (pick your map)</b> → next tier. [A] Economy · [B] Skill (Long-Exposure) · [C] Gauntlet.'));
     D().tiers.forEach(ti => { const unlocked = ti.t <= (S.tiers.unlocked | 0);
       const clr = i => S.tiers.cleared[ti.t + '_' + i] ? '●' : '○';
+      const rDone = S.tiers.raid && S.tiers.raid[ti.t];
       const hd = row(b, `<div class="fill"><b style="${unlocked ? '' : 'opacity:.5'}">T${ti.t} · ${ti.nm}</b>
-        <span class="sub">${ti.biome || ''} · reward ×${ti.premMul || 1} · best R${(S.tiers.best[ti.t] | 0)}${S.tiers.bestHard[ti.t] ? ' · hard R' + S.tiers.bestHard[ti.t] : ''} · ${clr(0)}${clr(1)}${clr(2)}</span></div>`,
+        <span class="sub">${ti.biome || ''} · reward ×${ti.premMul || 1} · best R${(S.tiers.best[ti.t] | 0)}${S.tiers.bestHard[ti.t] ? ' · hard R' + S.tiers.bestHard[ti.t] : ''} · ${clr(0)}${clr(1)}${clr(2)}${rDone ? ' · ⚔✓' : ''}</span></div>`,
         unlocked ? '' : 'locked');
       if (!unlocked) return;
       ti.maps.forEach((m, i) => { const cur = R && R.tier === ti.t && R.mapIdx === i;
         const r = row(b, `<div class="fill"><span>[${m.slot}] ${m.nm}${cur ? ' — CURRENT' : ''}</span><span class="sub">${(m.arch || '').toUpperCase()} · ${({A: 'ECONOMY', B: 'SKILL', C: 'GAUNTLET'})[m.slot] || ''}${S.tiers.cleared[ti.t + '_' + i] ? ' · R100 ✓' : ''}</span></div>`, cur ? 'bR' : '');
         r.appendChild(btn('Run', 'sm buy', () => { G.main.newRun({tier: ti.t, mapIdx: i}); G.ui.toast('T' + ti.t + ' · ' + m.nm); $('#sheet').classList.remove('on'); }));
-        if (S.tiers.cleared[ti.t + '_' + i]) r.appendChild(btn('Hard', 'sm ghost', () => { G.main.newRun({tier: ti.t, mapIdx: i, hard: 1}); $('#sheet').classList.remove('on'); })); }); }); },
+        if (S.tiers.cleared[ti.t + '_' + i]) r.appendChild(btn('Hard', 'sm ghost', () => { G.main.newRun({tier: ti.t, mapIdx: i, hard: 1}); $('#sheet').classList.remove('on'); })); });
+      /* ---- the tier RAID row (DESIGN-FINAL-RUN 5+7): 3/3 clears open it; pick your map; clear = advance ---- */
+      const all3 = [0, 1, 2].every(i => S.tiers.cleared[ti.t + '_' + i]);
+      if (all3) { const rr = row(b, `<div class="fill"><b>⚔ RAID · ${ti.bossNm || 'Signature Boss'}${rDone ? ' <em class="pill gold">CLEARED ✓</em>' : ''}</b><span class="sub">${rDone ? 'replay the encounter — pick your map' : 'signature boss + waves together — afkable if over-progressed, punishing on-level. Pick your map:'}</span></div>`, rDone ? '' : 'bR');
+        ti.maps.forEach((m, i) => rr.appendChild(btn(m.slot, 'sm ' + (rDone ? 'ghost' : 'buy'), () => { if (G.main.newRun({tier: ti.t, mapIdx: i, raid: 1})) { G.ui.toast('⚔ RAID · ' + (ti.bossNm || 'Boss') + ' — ' + m.nm); $('#sheet').classList.remove('on'); } }))); }
+      else if (ti.t === (S.tiers.unlocked | 0) && ti.t < 20) { const n = [0, 1, 2].filter(i => !S.tiers.cleared[ti.t + '_' + i]).length;
+        row(b, `<div class="fill"><b style="opacity:.55">⚔ RAID — locked</b><span class="sub">clear ${n} more map${n > 1 ? 's' : ''} at R100 to face ${ti.bossNm || 'the tier boss'}</span></div>`, 'locked'); } }); },
   /* ---------- PRESTIGE — ascension/relics · transcendence/aether · convergence · axes ---------- */
   prestige(b) { const S = G.S, R = G.R, P = D().prestige;
     const bn = Object.values(S.tiers.best), bh = Object.values(S.tiers.bestHard);
@@ -5117,6 +5628,23 @@ Object.assign(G.ui.sheets, {
     const se = L.season();
     b.appendChild(h('div', 'card lux', `<b>${se.emoji} Season ${se.s} · ${se.nm}</b><span class="sub"> — week ${se.week}, Drop ${se.drop} · “The Long Night” continues in the Chronicle</span>`));
     L.activeEvents().forEach(ev => { const r = row(b, `<div class="fill"><b>${ev.nm}${ev.live ? ' — LIVE' : ''}</b><span class="sub">${(D().eventTypes[ev.type] || {}).nm || ev.type} · wk${ev.wk} · pays ${ev.cur}${ev.live ? ' · +15% Essence drops NOW' : ''}</span></div>`, ev.live ? 'bR' : ''); });
+    /* ---- §4 EVENT TOKENS — faucet: event dailies · sink: this shop · valve: leftovers → Mana ×2 ---- */
+    L.evValve && L.evValve(S);
+    const liveEv = L.activeEvents().find(e => e.live);
+    const tok = h('div', 'card sub num', `⬡ <b>${S.evTokens | 0}</b> Event Tokens`); tok.title = 'Earned from event dailies while an event is LIVE · spent in the event shop · leftovers convert to Mana ×2 when the event ends'; b.appendChild(tok);
+    if (liveEv) { b.appendChild(h('div', 'card sub', `<b>EVENT SHOP — ${liveEv.nm}</b> (closes with the event; tokens never strand)`));
+      [['embra', 'Embra Ashvow — event hero', 2000], ['voltra', 'Voltra Kess — event hero', 2000]].forEach(([hid, nm2, cost]) => {
+        const owned = !!(S.heroes.owned || {})[hid];
+        const r = row(b, `<div class="fill"><b>${nm2}</b><span class="sub">hero shards — permanent roster unlock</span></div>`, owned ? '' : 'bR');
+        r.appendChild(owned ? h('em', 'pill gold', 'OWNED') : btn('⬡ ' + cost, 'sm buy', () => { if ((S.evTokens | 0) < cost) return G.ui.toast('Need Event Tokens', 'warn');
+          S.evTokens -= cost; S.heroes.owned[hid] = 1; G.ui.toast(nm2.split(' — ')[0] + ' joins the roster!', 'good'); G.ui.openSheet('events'); })); });
+      const rb = row(b, `<div class="fill"><b>Surge Draught</b><span class="sub">next run +15% Essence (consumable)${S.liveops.evBuff ? ' · QUEUED' : ''}</span></div>`);
+      rb.appendChild(btn('⬡ 150', 'sm', () => { if ((S.evTokens | 0) < 150) return G.ui.toast('Need Event Tokens', 'warn');
+        if (S.liveops.evBuff) return G.ui.toast('Already queued for next run', 'warn');
+        S.evTokens -= 150; S.liveops.evBuff = 1; G.ui.toast('Surge Draught queued — next run +15% Essence', 'good'); G.ui.openSheet('events'); }));
+      const cs = row(b, `<div class="fill"><b>Frost Veil</b><span class="sub">event tower skin${S.cosmetics.owned.includes('frostveil') ? ' · OWNED' : ''}</span></div>`);
+      if (!S.cosmetics.owned.includes('frostveil')) cs.appendChild(btn('⬡ 600', 'sm', () => { if ((S.evTokens | 0) < 600) return G.ui.toast('Need Event Tokens', 'warn');
+        S.evTokens -= 600; S.cosmetics.owned.push('frostveil'); G.ui.toast('Frost Veil unlocked', 'good'); G.ui.openSheet('events'); })); }
     /* season pass — the real 50-tier track */
     const lvl = L.passLevel(), prem = !!S.liveops.premium;
     const pr = row(b, `<div class="fill"><b>Season Pass · Lv ${lvl}/50</b>${bar(lvl / 50)}<span class="sub">+speed stacks are PERMANENT and also earnable free (§N)</span></div>`, 'lux bE');
@@ -5181,11 +5709,32 @@ Object.assign(G.ui.sheets, {
   social(b) { const S = G.S, soc = G.social;
     const wkKills = soc.weekKills(S);
     row(b, `<div class="fill"><b>Guild — ${soc.guild.nm}</b><span class="sub num">this week: you ${fmt(BN.from(wkKills))} kills · weekly chest at #1</span><em class="pill">you: #${soc.rank(S)}</em></div>`);
+    /* ---- §4 GUILD CREDITS — faucets: daily donate 20 · guild-boss (duo) 75 · weekly 200 ---- */
+    const gc = h('div', 'card sub num', `▣ <b>${S.guildCr | 0}</b> Guild Credits`); gc.title = 'Earned from guild activity (donate, guild boss, weekly mission) · spent in the guild shop'; b.appendChild(gc);
+    const dk2 = G.liveops ? G.liveops.dayKey() : 0, wk2 = Math.floor(G.gameNow() / (7 * 864e5));
+    const don = row(b, `<div class="fill"><b>Daily donation</b><span class="sub">pitch in — +20 ▣ once a day${S.liveops.donateDay === dk2 ? ' · DONE today' : ''}</span></div>`);
+    if (S.liveops.donateDay !== dk2) don.appendChild(btn('Donate +20▣', 'sm buy', () => { S.liveops.donateDay = dk2; S.guildCr = (S.guildCr | 0) + 20; G.ui.toast('+20 Guild Credits', 'good'); G.ui.openSheet('social'); }));
+    if (soc.isTop(S)) { S.stats.guildtop = 1; const wr = row(b, `<div class="fill"><b>👑 Top contributor this week!</b><span class="sub">weekly mission chest — +200 ▣${S.liveops.wkChest === wk2 ? ' · CLAIMED' : ''}</span></div>`, 'bL');
+      if (S.liveops.wkChest !== wk2) wr.appendChild(btn('Claim +200▣', 'sm gold', () => { S.liveops.wkChest = wk2; S.guildCr = (S.guildCr | 0) + 200; G.ui.toast('+200 Guild Credits — weekly mission', 'good'); G.ui.openSheet('social'); })); }
+    const duo = row(b, '<div class="fill"><b>Duo co-op</b><span class="sub">shared boss-HP raids (local-sim) — win pays +75 ▣ · odds scale with your real best round</span></div>');
+    duo.appendChild(btn('Run duo raid', 'buy', () => { const r = soc.duoRaid(S); if (r.win) { S.stats.duowin = 1; S.guildCr = (S.guildCr | 0) + 75; G.ach.check(S); }
+      G.ui.toast(r.win ? '⚔ Raid cleared with ' + r.ally + '! +' + r.prisms + '△ +75▣' : 'So close — ' + r.ally + ' says gg'); G.ui.openSheet('social'); }));
+    /* ---- guild shop: 2 exclusive heroes · capped tech · consumable ---- */
+    [['thorne', 'Thorne Duskmantle — guild hero', 2500], ['lyra', 'Lyra Meadowlight — guild hero', 2500]].forEach(([hid, nm2, cost]) => {
+      const owned = !!(S.heroes.owned || {})[hid];
+      const r = row(b, `<div class="fill"><b>${nm2}</b><span class="sub">guild-exclusive roster unlock</span></div>`);
+      r.appendChild(owned ? h('em', 'pill gold', 'OWNED') : btn('▣ ' + cost, 'sm buy', () => { if ((S.guildCr | 0) < cost) return G.ui.toast('Need Guild Credits', 'warn');
+        S.guildCr -= cost; S.heroes.owned[hid] = 1; G.ui.toast(nm2.split(' — ')[0] + ' joins the roster!', 'good'); G.ui.openSheet('social'); })); });
+    [['mana', 'Guild tech: Mana yield', '+5% Mana/level', 500, 4], ['off', 'Guild tech: Night watch', '+30min offline cap/level', 1500, 2]].forEach(([k, nm2, d2, base, cap]) => {
+      const lv2 = (S.guildTech && S.guildTech[k]) | 0, cost = base * Math.pow(2, lv2);
+      const r = row(b, `<div class="fill"><b>${nm2} ${lv2}/${cap}</b><span class="sub">${d2} — capped account buff, never combat power</span></div>`);
+      if (lv2 < cap) r.appendChild(btn('▣ ' + cost, 'sm', () => { if ((S.guildCr | 0) < cost) return G.ui.toast('Need Guild Credits', 'warn');
+        S.guildTech = S.guildTech || {}; S.guildCr -= cost; S.guildTech[k] = lv2 + 1; G.ui.toast(nm2 + ' → ' + (lv2 + 1), 'good'); G.ui.openSheet('social'); })); });
+    const gb = row(b, `<div class="fill"><b>Banner Draught</b><span class="sub">next run +10% damage (consumable)${S.liveops.gldBuff ? ' · QUEUED' : ''}</span></div>`);
+    gb.appendChild(btn('▣ 100', 'sm', () => { if ((S.guildCr | 0) < 100) return G.ui.toast('Need Guild Credits', 'warn');
+      if (S.liveops.gldBuff) return G.ui.toast('Already queued for next run', 'warn');
+      S.guildCr -= 100; S.liveops.gldBuff = 1; G.ui.toast('Banner Draught queued — next run +10% damage', 'good'); G.ui.openSheet('social'); }));
     soc.guild.members.slice(0, 6).forEach(m => row(b, `<div class="fill"><span>${m.nm}</span><em class="pill num">${fmt(m.score)} pts</em></div>`));
-    if (soc.isTop(S)) { S.stats.guildtop = 1; row(b, `<div class="fill"><b>👑 Top contributor this week!</b></div>`, 'bL'); }
-    const duo = row(b, '<div class="fill"><b>Duo co-op</b><span class="sub">shared boss-HP raids (local-sim) — win odds scale with your real best round</span></div>');
-    duo.appendChild(btn('Run duo raid', 'buy', () => { const r = soc.duoRaid(S); if (r.win) { S.stats.duowin = 1; G.ach.check(S); }
-      G.ui.toast(r.win ? '⚔ Raid cleared with ' + r.ally + '! +' + r.prisms + '△' : 'So close — ' + r.ally + ' says gg'); G.ui.openSheet('social'); }));
     const fr = row(b, `<div class="fill"><b>Friends (${(S.stats.friends | 0)})</b><span class="sub">gifts sent today: ${soc.giftsToday(S)}/5 (+5△ back each)</span></div>`);
     fr.appendChild(btn('Add friend', 'sm', () => { if ((S.stats.friends | 0) < 10) { S.stats.friends = (S.stats.friends | 0) + 1; G.ach.check(S); } G.ui.openSheet('social'); }));
     fr.appendChild(btn('Send gift', 'sm ghost', () => { const g = soc.gift(S); G.ui.toast(g ? '🎁 sent — +5△ returned' : 'Daily gift cap reached', g ? 'good' : 'warn'); G.ui.openSheet('social'); }));
@@ -5349,12 +5898,24 @@ G.liveops.dailies = () => { const rng = G.mulberry(G.liveops.dailySeed()), M = D
   return out; };
 G.liveops.dailyDone = idx => { const S = G.S, dk = G.liveops.dayKey();
   return !!(S.liveops.dailyDone && S.liveops.dailyDone[dk] && S.liveops.dailyDone[dk][idx]); };
+/* §4 end-of-event valve: when the live event rotates/ends, residual Event Tokens → Mana at 1:2 —
+   no stranded balances. Called from completeDaily + the Events sheet (both real-play moments). */
+G.liveops.evValve = S => { let live = null; try { live = G.liveops.activeEvents(S).find(e => e.live); } catch (e) {}
+  const key = live ? (live.nm + '_wk' + live.wk) : 0, lo = S.liveops, n = S.evTokens | 0;
+  if (lo.lastEv && lo.lastEv !== key && n > 0) { const m = BN.from(n * 2);
+    S.mana = BN.add(S.mana, m); S.manaLife = BN.add(S.manaLife, m); S.evTokens = 0;
+    G.bus.emit('evValve', {tokens: n, mana: n * 2});
+    if (G.ui && G.ui.toast) G.ui.toast('Event over — ' + n + ' Tokens → ' + (n * 2) + ' Mana', 'good'); }
+  lo.lastEv = key; };
 G.liveops.completeDaily = (S, idx) => { const dk = G.liveops.dayKey();
   S.liveops.dailyDone = S.liveops.dailyDone || {};
   const day = S.liveops.dailyDone[dk] = S.liveops.dailyDone[dk] || {};
   if (day[idx]) return false; day[idx] = 1;
   const d = G.liveops.dailies()[idx], rw = d ? d.reward : {prisms: 40};
   S.prisms += rw.prisms || 0; S.shards += rw.shards || 0;
+  S.shards += 3;                                                        // §4 Ultimate Cores: daily drip 3
+  G.liveops.evValve(S);
+  try { if (G.liveops.activeEvents(S).find(e => e.live)) S.evTokens = (S.evTokens | 0) + 40; } catch (e) {} // §4 Event Tokens: ~40-120/day (3 dailies × 40) while an event is LIVE
   S.stats.dailies = (S.stats.dailies | 0) + 1;
   S.liveops.dailyLog = (S.liveops.dailyLog || []).slice(-30); S.liveops.dailyLog.push(dk);
   if (Object.keys(day).length >= 3) { S.prisms += D().dailies.rewards.all3.prisms; }
@@ -5457,6 +6018,7 @@ G.save.load = () => { let raw; try { raw = localStorage.getItem(KEY); } catch (e
   if (!raw) return null; let obj; try { obj = JSON.parse(raw); } catch (e) { return null; }
   const stateRaw = obj && obj.state ? obj.state : obj;                   // tolerate bare-state blobs
   const state = G.save.migrate(stateRaw);
+  if (state.slotted && state.slotted.length > G.D.ultUp.maxSlots) state.slotted.length = G.D.ultUp.maxSlots; // §6b loadout shrink 5→3: keep the first 3
   if (obj && obj.account && obj.account.provider) state.provider = obj.account.provider;
   G.S = state; return state; };
 G.save.write = opts => { opts = opts || {}; const S = G.S; if (!S) return false;
@@ -5567,6 +6129,7 @@ G.main.bake = () => { if (G.render && G.render.markStale) G.render.markStale(); 
 G.main.newRun = opts => { opts = opts || {}; const S = G.S;
   const tier = opts.tier || (S.tiers && S.tiers.unlocked) || 1, mapIdx = opts.mapIdx || 0;
   const R = G.sim.newRun(S, tier, mapIdx, opts);
+  if (!R) { if (G.ui && G.ui.toast) G.ui.toast('Clear R100 on all 3 maps to unlock the RAID', 'warn'); return null; } // raid gate refused
   if (G.cam && G.cam.fit) G.cam.fit();
   G.main.bake();
   if (G.render) G.render.sel = null; if (G.ui) G.ui.sel = null;
