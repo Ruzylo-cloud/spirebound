@@ -43,6 +43,7 @@ h1,h2,h3{font-weight:800;letter-spacing:.02em}
 .chip{pointer-events:auto;display:flex;align-items:center;gap:5px;background:var(--plate);border:1px solid var(--line);
   border-radius:999px;padding:4px 10px;font-size:12.5px;font-weight:700;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 2px 8px #0006}
 .chip .ico{font-size:13px}
+.curico{display:block}
 .chip.grow{flex:1;min-width:0}.chip .val{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #hpwrap{pointer-events:auto;background:var(--plate);border:1px solid var(--line);border-radius:12px;padding:5px 8px;
   display:flex;flex-direction:column;gap:3px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 2px 8px #0006}
@@ -70,39 +71,86 @@ h1,h2,h3{font-weight:800;letter-spacing:.02em}
 .ult .cdt{position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:8px;font-weight:800;color:var(--ink2);text-shadow:0 1px 2px #000}
 @keyframes pulse{50%{transform:scale(1.06)}}
 /* ---------- bottom dock ---------- */
-#dock{position:absolute;left:0;right:0;bottom:0;z-index:22;padding:0 max(6px,var(--sal)) 0 max(6px,var(--sar));
+#dock{position:absolute;left:0;right:0;bottom:0;z-index:22;padding:0 max(6px,var(--sar)) 0 max(6px,var(--sal));
+  display:flex;flex-direction:column;max-height:30vh;max-height:30dvh; /* COMPACT-UI LAW: tray+panel+tabbar together never pass the bottom 30% (UI-COMPACT-SHEETS §1) */
   background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--bg) 88%,transparent) 30%)}
-#tray{display:flex;gap:7px;overflow-x:auto;padding:8px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x}
+#tray{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:6px;max-height:110px;overflow-y:auto;overflow-x:hidden;padding:6px 4px 5px;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-y} /* SLOTS spec: ~2 rows, 3rd+ scrolls */
 #tray::-webkit-scrollbar{display:none}
-.tcard{flex:0 0 auto;width:64px;border-radius:var(--rad-s);background:var(--plate);border:1px solid var(--line);
-  padding:5px 4px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;
+.slotchip{flex:0 0 auto;display:flex;align-items:center;height:46px;padding:0 8px;border-radius:var(--rad-s);background:var(--plate);border:1px solid var(--line);font-size:10px;font-weight:800;letter-spacing:.05em;color:var(--ink2)}
+.tbtn.buyslot{border-style:dashed;border-color:var(--line2)}
+.tbtn.buyslot .bsl{font-size:9px;font-weight:900;letter-spacing:.06em;color:var(--acc)}
+.tbtn{flex:0 0 auto;width:46px;height:46px;border-radius:var(--rad-s);background:var(--plate);border:1px solid var(--line);
+  position:relative;display:flex;align-items:center;justify-content:center;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 2px 8px #0006} /* shared 3-layer depth recipe */
-.tcard canvas{width:38px;height:38px}
-.tcard .tn{font-size:9px;font-weight:700;color:var(--ink2);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tcard .tc{font-size:9.5px;font-weight:800;color:var(--acc)}
-.tcard.afford{border-color:var(--line2)}
-.tcard:not(.afford){opacity:.55}
-.tcard.sel{border-color:var(--acc);box-shadow:var(--glow) color-mix(in srgb,var(--acc) 45%,transparent)}
-.tcard .lk{position:absolute;inset:0;border-radius:inherit;background:#000a;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:var(--ink2)}
-#tabbar{display:flex;gap:2px;padding:4px 2px calc(var(--sab) + 6px);justify-content:space-around}
+.tbtn .curico{width:30px;height:30px;pointer-events:none}
+.tbtn .tct{position:absolute;right:2px;bottom:1px;font-size:8px;font-weight:800;line-height:1.5;color:var(--ink2);
+  background:#000a;border-radius:6px;padding:0 3px;pointer-events:none;letter-spacing:.04em}
+.tbtn.has .tct{color:var(--acc)}
+.tbtn.afford{border-color:var(--line2)}
+.tbtn:not(.afford):not(.has):not(.buyslot){opacity:.5}
+.tbtn.sel{border-color:var(--acc);box-shadow:var(--glow) color-mix(in srgb,var(--acc) 45%,transparent)}
+@media(hover:hover){.tbtn:hover{border-color:color-mix(in srgb,var(--acc) 55%,var(--line2))}
+  .tpbuy.afford:hover,.rbuy.afford:hover{box-shadow:var(--glow) color-mix(in srgb,var(--acc) 38%,transparent)}}
+#tabbar{flex:0 0 auto;display:flex;gap:2px;padding:3px 2px calc(var(--sab) + 4px);justify-content:space-around}
 #tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 2px;border-radius:10px;
   font-size:9px;font-weight:700;color:var(--ink3);min-height:var(--tap)}
 #tabbar button .ti{font-size:17px;line-height:1}
 #tabbar button.on{color:var(--acc);background:color-mix(in srgb,var(--acc) 10%,transparent)}
 #tabbar button .dot{position:absolute;margin-left:22px;margin-top:-2px;width:7px;height:7px;border-radius:99px;background:var(--bad);display:none}
 #tabbar button.noti .dot{display:block}
-/* ---------- sheet (tab panel) ---------- */
-#sheet{position:absolute;left:0;right:0;bottom:0;top:calc(var(--sat) + 54px);z-index:30;display:none;flex-direction:column;
+/* ---------- sheet (tab panel) — in-dock ≤30vh band; desktop = right rail (UI-COMPACT-SHEETS §1/§5) ---------- */
+#sheet{display:none;flex-direction:column;flex:0 1 auto;min-height:0;position:relative;z-index:30;
   background:linear-gradient(180deg,var(--bg2),var(--bg) 60%); /* SOLID plate over combat — glass is Store/Pass only (board law) */
   border-top-left-radius:var(--rad-l);border-top-right-radius:var(--rad-l);
   border-top:1px solid color-mix(in srgb,var(--acc) 38%,var(--line2)); /* 1px accent edge-light (T3 amendment) */
   box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 -12px 40px #0008;
   animation:up .22s cubic-bezier(.2,.9,.3,1)}
 @keyframes up{from{transform:translateY(28px);opacity:.4}}
-#sheetHead{display:flex;align-items:center;gap:10px;padding:12px 14px 8px}
-#sheetHead h2{font-size:19px;flex:1}
-#sheetHead .x{width:34px;height:34px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);font-size:15px;font-weight:800;color:var(--ink2)}
-#sheetBody{flex:1;overflow-y:auto;overflow-x:hidden;padding:2px 12px calc(var(--sab) + 84px);touch-action:pan-y;-webkit-overflow-scrolling:touch}
+#sheetGrip{flex:0 0 auto;width:38px;height:4px;border-radius:99px;background:var(--line2);margin:5px auto 0;touch-action:none}
+#sheetHead{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:5px 12px 4px}
+#sheetHead h2{font-size:15px;flex:1;min-width:0;line-height:1.15}
+#sheetHead .x{flex:0 0 auto;width:28px;height:28px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);font-size:13px;font-weight:800;color:var(--ink2)}
+#sheetBody{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:2px 12px 8px;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+/* ---------- per-TYPE compact upgrade panel vocabulary (item 1 · design-refs/11-v3-final-compact) ---------- */
+#sheetHead h2 .tpn{font-family:Georgia,'Times New Roman',serif;font-variant:small-caps;letter-spacing:.08em;font-size:16px}
+#sheetHead h2 em{font-style:normal;font-size:9.5px;color:var(--acc);letter-spacing:.08em;vertical-align:2px;font-weight:800}
+#sheetHead h2 .tpsub{display:block;font-size:8px;letter-spacing:.12em;color:var(--ink2);font-weight:800;margin-top:1px}
+.permpill{flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:800;letter-spacing:.08em;
+  padding:3px 9px;border-radius:99px;background:var(--panel2);border:1px solid var(--line2);color:var(--ink2)}
+.permpill b{color:var(--ink)}
+.tprow{display:flex;align-items:center;gap:8px;padding:4px 8px;background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--rad-s);margin-bottom:4px;min-height:34px}
+.tprow .tpinfo{flex:1;min-width:0}
+.tprow .tpinfo b{display:block;font-size:11.5px;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tprow .tpinfo .tpt{display:block;font-size:8px;letter-spacing:.09em;color:var(--ink3);font-weight:800}
+.tprow.locked{opacity:.6}
+.tpips{display:flex;gap:6px;flex:0 0 auto;padding:0 2px}
+.pip{width:10px;height:10px;transform:rotate(45deg);border-radius:2.5px;border:1.5px solid var(--line2);background:transparent}
+.pip.own{background:linear-gradient(135deg,var(--acc),var(--acc2));border-color:transparent;box-shadow:0 0 6px color-mix(in srgb,var(--acc) 45%,transparent)}
+.pip.next{border-color:var(--acc)}
+.pip.ult.own{box-shadow:0 0 9px color-mix(in srgb,var(--acc2) 70%,transparent)}
+.tpbuy{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:88px;min-height:32px;
+  border-radius:9px;border:1px solid var(--line2);background:linear-gradient(180deg,var(--panel2),var(--bg3));padding:3px 10px}
+.tpbuy b{font-size:9px;letter-spacing:.09em}
+.tpbuy .tpc{font-size:10px;font-weight:800;color:var(--acc)}
+.tpbuy.afford{border-color:color-mix(in srgb,var(--acc) 55%,var(--line2))}
+.tpbuy:not(.afford):not(.done){opacity:.55}
+.tpbuy.done{opacity:.85;border-color:color-mix(in srgb,var(--acc2) 45%,var(--line2))}
+.tplock{flex:0 0 auto;min-width:88px;text-align:center;font-size:8px;font-weight:800;letter-spacing:.1em;color:var(--ink3);
+  border:1px dashed var(--line2);border-radius:9px;padding:5px 8px;line-height:1.5}
+.ratchet{display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--panel);border:1px solid var(--line);border-radius:var(--rad-s);margin:1px 0 2px}
+.ratchet .rl{font-size:8px;letter-spacing:.16em;font-weight:800;color:var(--ink2);flex:0 0 auto}
+.ratchet .rbar{flex:1;position:relative;height:6px;border-radius:99px;background:#0008;overflow:hidden}
+.ratchet .rbar>i{position:absolute;inset:0;transform-origin:left;border-radius:99px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.ratchet .rbar>em{position:absolute;top:-1px;bottom:-1px;width:2px;background:var(--ink2);opacity:.9}
+.ratchet .rlv{flex:0 0 auto;font-size:9px;font-weight:800;letter-spacing:.08em;color:var(--ink)}
+.ratchet .rbuy{flex:0 0 auto;font-size:9.5px;font-weight:800;padding:4px 9px;border-radius:8px;border:1px solid var(--line2);
+  background:linear-gradient(180deg,var(--panel2),var(--bg3));color:var(--ink)}
+.ratchet .rbuy.afford{border-color:color-mix(in srgb,var(--acc) 55%,var(--line2));color:var(--acc)}
+.ratchet .rbuy:not(.afford){opacity:.55}
+.rcap{font-size:8px;color:var(--ink3);padding:0 2px 5px;letter-spacing:.03em;line-height:1.4}
+.tpacts{display:flex;gap:6px;padding-bottom:3px}
+.tpacts .btn{flex:1;min-height:32px;padding:5px 8px;font-size:10.5px}
 .seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px;margin:6px 0 10px}
 .seg button{flex:1;padding:7px 4px;border-radius:9px;font-size:11.5px;font-weight:800;color:var(--ink3)}
 .seg button.on{background:var(--bg3);color:var(--ink);box-shadow:0 1px 6px #0006}
@@ -136,6 +184,38 @@ h1,h2,h3{font-weight:800;letter-spacing:.02em}
 .toast.big{border-color:var(--gold);box-shadow:var(--glow) color-mix(in srgb,var(--gold) 35%,transparent),0 6px 24px #0009}
 @keyframes tst{0%{opacity:0;transform:translateY(-8px) scale(.94)}8%,84%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-6px)}}
 /* ---------- theme gate ---------- */
+/* ---------- run-end screens (§5) — SOLID plate over combat, Defeat vs Clear moods ---------- */
+#runend{position:absolute;inset:0;z-index:55;display:none;align-items:center;justify-content:center;background:#05070fc7;padding:18px}
+#runend.on{display:flex}
+#runend .replate{width:min(420px,92vw);max-height:86vh;overflow-y:auto;background:linear-gradient(180deg,var(--bg2),var(--bg));
+  border:1px solid var(--line2);border-radius:18px;padding:20px 20px 16px;text-align:center;
+  box-shadow:0 24px 80px #000c,inset 0 1px 0 rgba(255,255,255,.05)}
+#runend.death .replate{border-color:#5a2830;background:linear-gradient(180deg,#171019,#0d0a12)}
+#runend.clear .replate{border-color:color-mix(in srgb,var(--acc) 42%,var(--line2))}
+#runend h1{font-size:19px;letter-spacing:.13em;font-weight:900;margin:8px 0 2px}
+#runend.death h1{color:#ff8f7a}#runend.clear h1{color:var(--acc)}
+#runend .resub{font-size:11.5px;color:var(--ink2);margin:0 0 12px}
+#runend.death .respire{filter:grayscale(.75) brightness(.55)}
+#runend .reward{display:flex;align-items:center;justify-content:center;gap:7px;background:var(--plate);border:1px solid var(--line);
+  border-radius:999px;padding:7px 14px;margin:0 auto 12px;width:max-content;max-width:100%;font-weight:800;font-size:13px}
+#runend .reward .lbl{font-size:9px;letter-spacing:.12em;color:var(--ink2);font-weight:800}
+#runend .reward .best{font-size:9px;letter-spacing:.1em;color:var(--acc);border:1px solid var(--acc);border-radius:99px;padding:2px 7px;font-style:normal}
+#runend .reward .gclear{font-size:9px;letter-spacing:.1em;color:var(--gilt,#F0CF82);border:1px solid var(--gilt,#F0CF82);border-radius:99px;padding:2px 7px;font-style:normal}
+#runend .restats{display:grid;gap:5px;margin:0 0 14px}
+#runend .rerow{display:flex;justify-content:space-between;font-size:12px;padding:6px 10px;background:var(--plate);border:1px solid var(--line);border-radius:9px;color:var(--ink2)}
+#runend .rerow b{color:var(--ink)}
+#runend .rects{display:flex;gap:8px;justify-content:center}
+#runend .rects .btn{flex:1;max-width:180px}
+/* entrance: causal — plate lands, rows stagger, CTAs resolve last; reduced-motion = instant poster */
+#runend.on .replate{opacity:0;transform:translateY(14px) scale(.985);animation:reIn .34s cubic-bezier(.2,.9,.24,1) forwards}
+#runend.on .rerow{opacity:0;animation:reRow .26s ease-out forwards}
+#runend.on .rerow:nth-child(1){animation-delay:.16s}#runend.on .rerow:nth-child(2){animation-delay:.22s}
+#runend.on .rerow:nth-child(3){animation-delay:.28s}#runend.on .rerow:nth-child(4){animation-delay:.34s}
+#runend.on .rerow:nth-child(5){animation-delay:.4s}
+#runend.on .rects{opacity:0;animation:reRow .3s ease-out .5s forwards}
+@keyframes reIn{to{opacity:1;transform:none}}
+@keyframes reRow{to{opacity:1}}
+.reduceMotion #runend.on .replate,.reduceMotion #runend.on .rerow,.reduceMotion #runend.on .rects{animation:none;opacity:1;transform:none}
 #themeGate{position:absolute;inset:0;z-index:80;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px}
 #themeGate h1{font-size:30px;letter-spacing:.14em;background:linear-gradient(180deg,#fff,var(--acc));-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 30px color-mix(in srgb,var(--acc) 40%,transparent)}
 #themeGate p{color:var(--ink2);font-size:13px;text-align:center;max-width:300px}
@@ -213,7 +293,7 @@ h1,h2,h3{font-weight:800;letter-spacing:.02em}
   color:var(--acc);border:1px solid color-mix(in srgb,var(--acc) 45%,transparent);border-radius:99px;padding:2px 6px}
 /* ---------- placement / speed / misc overlays ---------- */
 #speedCtl{display:none} /* speed lives in the HUD context strip (FINAL design) */
-#placeHint{position:absolute;left:50%;transform:translateX(-50%);bottom:150px;z-index:23;background:var(--plate);border:1px solid var(--acc);
+#placeHint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 122px);z-index:23;background:var(--plate);border:1px solid var(--acc);
   border-radius:12px;padding:8px 16px;font-size:12px;font-weight:700;display:none;box-shadow:0 2px 8px #0006}
 #placeHint.on{display:block}
 #modeFly{position:absolute;pointer-events:none;left:50%;top:38%;transform:translate(-50%,-50%);z-index:24;font-size:26px;font-weight:900;
@@ -221,21 +301,29 @@ h1,h2,h3{font-weight:800;letter-spacing:.02em}
 .reduceMotion *{animation-duration:.001s!important;transition-duration:.001s!important}
 .lowFlash .toast,.lowFlash .ult.ready{box-shadow:none!important}
 #rotHint{display:none}
-@media (min-width:1024px){ /* desktop web: same language breathing into the width (one codebase) */
+@media (min-width:1024px){ /* desktop web: right RAIL ≤30vw — the arena is never covered (UI-COMPACT-SHEETS §5) */
   #hud{left:50%;right:auto;transform:translateX(-50%);width:min(920px,96vw)}
-  #dock{left:50%;right:auto;transform:translateX(-50%);width:min(1100px,98vw)}
-  .tcard{width:74px}.tcard canvas{width:44px;height:44px}
-  .tcard .tn{font-size:10px}.tcard .tc{font-size:10.5px}
+  #dock{left:calc(50% - min(1100px,98vw)/2);right:auto;width:min(1100px,98vw);max-height:none} /* no transform: a transformed ancestor would become the containing block for the fixed right-rail #sheet child and strand it offscreen */
+  .tbtn{width:52px;height:52px}.tbtn .curico{width:34px;height:34px}
   #tabbar button{font-size:11px}
-  #sheet{left:auto;right:0;top:0;width:min(540px,44vw);border-top-left-radius:var(--rad-l);
-    border-bottom-left-radius:0;border-top-right-radius:0;border-left:1px solid var(--line2)}
+  #sheet{position:fixed;left:auto;right:max(10px,var(--sar));top:calc(var(--sat) + 150px);bottom:126px;
+    width:min(30vw,380px);border-radius:var(--rad-l);border:1px solid var(--line2);
+    border-top:1px solid color-mix(in srgb,var(--acc) 38%,var(--line2))}
+  #sheetGrip{display:none}
+  #ults{transition:right .22s cubic-bezier(.2,.9,.3,1)}
+  #dock:has(#sheet.on) ~ #ults{right:calc(min(30vw,380px) + 22px)}
 }
 @media (orientation:landscape) and (max-height:460px){
   #hud{flex-direction:row;align-items:flex-start}
-  #dock #tray{padding:4px}
-  .tcard{width:56px}.tcard canvas{width:32px;height:32px}
+  #dock{max-height:none}
+  #dock #tray{padding:3px}
+  .tbtn{width:40px;height:40px}.tbtn .curico{width:26px;height:26px}
   #tabbar{padding-bottom:calc(var(--sab) + 2px)}
-  #sheet{left:auto;width:min(480px,62vw);border-top-left-radius:var(--rad-l);border-bottom-left-radius:0;border-left:1px solid var(--line2)}
+  #sheet{position:fixed;left:auto;right:max(6px,var(--sar));top:calc(var(--sat) + 6px);bottom:6px;
+    width:max(210px,30vw);border-radius:var(--rad);border:1px solid var(--line2);
+    border-top:1px solid color-mix(in srgb,var(--acc) 38%,var(--line2))}
+  #sheetGrip{display:none}
+  #dock:has(#sheet.on) ~ #ults{right:calc(max(210px,30vw) + 14px)}
 }
 </style>
 </head>
@@ -243,10 +331,9 @@ h1,h2,h3{font-weight:800;letter-spacing:.02em}
 <canvas id="cv"></canvas>
 <div id="hud"></div>
 <div id="bossbar"><div class="bname"></div><div class="bar"><i></i><b></b></div></div>
-<div id="ults"></div>
 <div id="speedCtl"></div>
-<div id="dock"><div id="tray"></div><div id="tabbar"></div></div>
-<div id="sheet"><div id="sheetHead"><h2></h2><button class="x">✕</button></div><div id="sheetBody"></div></div>
+<div id="dock"><div id="tray"></div><div id="sheet"><div id="sheetGrip"></div><div id="sheetHead"><h2></h2><button class="x">✕</button></div><div id="sheetBody"></div></div><div id="tabbar"></div></div>
+<div id="ults"></div>
 <div id="placeHint"></div>
 <div id="modeFly"></div>
 <div id="toasts"></div>
@@ -710,7 +797,7 @@ G.D.towerById = {}; TW.forEach(t => G.D.towerById[t.id] = t);
 
 /* ---------------- The central Spire (3 freeform infinite paths) ---------------- */
 G.D.spire = {
-  nm: 'The Spire', base: {hp: 100, regen: 1, ward: 40, d: 8, r: 1.1, rg: 150},
+  nm: 'The Spire', base: {hp: 120, regen: 1, ward: 60, d: 40, r: 1.1, rg: 120}, // §2d [PT1]-tuned: pulse 40dps rg120 → undefended falls to the w10 boss (in the 10-14 window); delayed ward regen in spireTick
   paths: [
     {id:'barrage', nm:'Arcane Barrage', ico:'✴️', d:'Damage, rate, multishot', per:{d:.10,rt:.04,multiAt:[25,60,120]}},
     {id:'aegis',   nm:'Aegis Ward',     ico:'🛡️', d:'HP, ward, regen, damage cap', per:{hp:.12,ward:.10,regen:.06}},
@@ -951,8 +1038,9 @@ G.D.curves = {
     if (r <= 100) l += r * L10(1.055);
     else if (r <= 1000) l += 100 * L10(1.055) + (r - 100) * L10(1.030);
     else l += 100 * L10(1.055) + 900 * L10(1.030) + (r - 1000) * L10(1.018) + Math.floor((r - 1000) / 500) * L10(1.4);
-    l += (t - 1) * L10(2.85);
     if (boss) l += L10(20);
+    if (r <= 300) l = L10(Math.pow(10, l) + 8 * r); // BALANCE-NUMBERS §2a +8w early floor ([PT]-refined): added ONCE, after boss ×20 —
+    l += (t - 1) * L10(2.85);                       // floor = early MOB bite; ×20-ing it walls the r10 first boss (1943 vs 485). Tier still last.
     return l;
   },
   rwLog10: (r, t) => L10(5) + r * L10(1.13) + (t - 1) * L10(3.4),
@@ -1248,6 +1336,18 @@ G.D.genMap = (map, seed, tier) => {
    each level +12% effect; every 5th level −5% cooldown (consistent with §H growth patterns). */
 G.D = G.D || {};
 (() => {
+/* ================= 0. BALANCE — perm-track curves + in-run RATCHET (BALANCE-NUMBERS §0/§1, Chris sign-off 2026-07-08) =====
+   famTrack: 7 shared family stat tracks, L-th level = base·g^(L-1) Mana (L33≈323, cum-to-99≈266k; ×7 families ≈1.86M).
+   ratchet (07-sim upgradeLvl): in-run cost = tw.cost·upBaseMul·g^(buys THIS RUN); perm lvl = in-run STARTING lvl; cap 99.
+   signature/spirePath/ultTrack curves are data-ready now; their purchase surfaces land with the meta-v2 sheets. */
+G.D.balance = {
+  famTrack:  {base:50,  g:1.06,  max:99, cur:'mana'},
+  signature: {base:120, g:1.09,  max:99, cur:'mana'},
+  spirePath: {base:80,  g:1.065, max:99, cur:'mana'},
+  ultTrack:  {base:3,   g:1.07,  max:99, cur:'cores'},
+  ratchet:   {upBaseMul:.9, g:1.12},
+  slots:     {base:400, g:2.4, start:5, max:15, cur:'mana'}              // TOWER SLOTS: 10 buys, steep — the fewer-towers hard cap
+};
 /* ================= 1. CODEX — 5 books, permanent Mana, raises run STARTING baselines ============ */
 const CL = (id,nm,per,k,cap) => ({id,nm,per,k,cap});
 G.D.codex = {
@@ -1736,7 +1836,7 @@ G.D.modes = {idle:{nm:'Idle',mult:1,combo:0,emoji:'😴'},balanced:{nm:'Balanced
 G.newState = () => ({
   v:1, mana:BN.Z(), manaLife:BN.Z(), cores:{}, shards:0, prisms:340, dust:0, glyphShards:0,
   relics:BN.Z(), aether:0, continuum:0, medals:0, ordealMarks:0,
-  codex:{}, foundry:{}, leylines:{}, foundations:{},
+  codex:{}, foundry:{}, leylines:{}, foundations:{}, perm:{fam:{},slots:0},
   ults:{nova:{lvl:0,auto:0}}, slotted:['nova'],
   runes:{equipped:{},inv:[],pity:{epic:0,legendary:0,mythic:0}},
   glyphs:{owned:{},equipped:[]},
@@ -1745,7 +1845,7 @@ G.newState = () => ({
   relicTree:{}, aetherTree:{},
   tiers:{unlocked:1,best:{},bestHard:{},cleared:{}},
   acct:{lvl:1,xp:0}, killsLife:BN.Z(), wispsLife:0,
-  opt:{mode:'balanced',theme:'aurora',notation:'letters',quality:'auto',reduceMotion:0},
+  opt:{mode:'balanced',theme:'aurora',notation:'letters',quality:'auto',reduceMotion:0,rmTouched:0,stackConfirm:'dialog'},
   time:{maxDateReached:0,lastSeen:0,install:0},
   liveops:{claimed:{},streak:0,passLvl:{},seasonSeen:0}, cosmetics:{owned:[],equipped:{}},
   stats:{bosses:0,overkills:0,dailies:0,foundryBuys:0,prismSpent:0,shardsLife:0,interestEss:0,
@@ -1843,14 +1943,16 @@ G.sim.newRun = (S, tier, mapIdx, opts) => {
     tier, mapIdx:mapIdx||0, map, seed, lay, lanes, hard:!!opts.hard, restricted:!!opts.restricted,
     round:0, phase:'idle', t:0, roundT:0,
     essence:BN.mulN(BN.from(20),M.startEss*(opts.startEss||1)), kills:0, killsRound:0, leaks:0,
-    spire:{hpMax:BN.mulN(BN.from(sb.hp),M.spireHp*100), hp:null, wardMax:BN.mulN(BN.from(sb.ward),M.wardHp*100),
+    spire:{hpMax:BN.mulN(BN.from(sb.hp),M.spireHp), hp:null, wardMax:BN.mulN(BN.from(sb.ward),M.wardHp), // §2d: ×100 display-scale dropped — pool 120/60 makes the leak %s REAL
            ward:null, regen:sb.regen*M.spireRegen, lvl:{barrage:0,aegis:0,conduit:0}, d:BN.Z(), rt:1, rg:sb.rg, cd:0},
     towers:[], enemies:[], boss:null, effects:[], zones:[],
+    permFam:Object.assign({},(S.perm&&S.perm.fam)||{}), typeLvl:{}, typeBuys:{}, typeSpent:BN.Z(),
+    slotMax:Math.min(15,5+((S.perm&&S.perm.slots)|0)),                   // TOWER SLOTS (META-DESIGN): 5 base → 15 via perm buys
     ults:{}, perkAt:5, perks:[], combo:BN.ONE(), comboK:0,
     income:BN.Z(), wispT:45+G.rng()*45, mode:S.opt.mode,
     disabledUntil:0, stats:{dmg:BN.Z(),wisps:0,overkills:0,bossKills:0}, over:false, mods:M
   };
-  if(R.restricted){R.mods=G.acctMods(G.newState());R.mods.gameSpeed=1;} // pure-skill: no meta (LOCKED)
+  if(R.restricted){R.mods=G.acctMods(G.newState());R.mods.gameSpeed=1;R.permFam={};R.slotMax=5;} // pure-skill: no meta incl. perm start-levels + slots (LOCKED)
   R.spire.hp=BN.clone(R.spire.hpMax); R.spire.ward=BN.clone(R.spire.wardMax);
   R.spire.d=BN.mulN(BN.from(sb.d),R.mods.spireDmg);
   D().ults.forEach(u=>{R.ults[u.id]={cd:0,ready:1}});
@@ -1876,11 +1978,13 @@ G.sim.towerStats = (R, t) => {
   t.route.forEach((lv,pi)=>{ const path=tw.p[pi]; for(let i=0;i<lv;i++) foldFx(st.acc,path.t[i]||{}); });
   const dBase=tw.b.d*fb*(1+(st.acc.d||0)), rt=tw.b.r*fr*(1+(st.acc.rt||0))*M.rate,
         rg=tw.b.rg*fg*(1+(st.acc.rg||0))*M.rg*(1-(R.rangeCut||0));      // Nightfall etc: boss range cut
+  if(R.typeLvl&&R.typeLvl[tw.id]!=null)t.upLvl=R.typeLvl[tw.id];  // per-TYPE level (Chris sign-off); t.upLvl mirrors for UI/save
   const lvMul=Math.pow(1.35,t.upLvl||0); // in-run generic level pumps (essence sink)
   let perEl=1; if(M.gfx&&M.gfx.perElement){ const els={}; R.towers.forEach(t2=>els[t2.tw.el]=1);
     perEl=1+M.gfx.perElement*Object.keys(els).length; }                 // glyph: per distinct element
-  t.dmg=BN.mulN(BN.from(dBase*lvMul),M.dmg*perEl*(1+(t._auraD||0))*(t.buff&&R.t<t.buffUntil?1+t.buff:1));
-  t.rt=rt*(t.rtBuff&&R.t<t.rtBuffUntil?1+t.rtBuff:1); t.rg=rg; t.fx=st.acc; t.pierce=st.pierce+(st.acc.pierce||0);
+  const sMul=Math.sqrt(t.st||1);                                        // STACKING: merged towers deliver ×st dps, split √impact·√timing
+  t.dmg=BN.mulN(BN.from(dBase*lvMul),M.dmg*perEl*sMul*(1+(t._auraD||0))*(t.buff&&R.t<t.buffUntil?1+t.buff:1));
+  t.rt=rt*sMul*(t.rtBuff&&R.t<t.rtBuffUntil?1+t.rtBuff:1); t.rg=rg; t.fx=st.acc; t.pierce=st.pierce+(st.acc.pierce||0);
   t.critC=Math.min(.8,(tw.b.crit?tw.b.crit.c:0)+(st.acc.crit?st.acc.crit.c||0:0)+M.critC);
   t.critD=M.critD+(st.acc.crit?st.acc.crit.d||0:0);
   return t;
@@ -1891,10 +1995,20 @@ G.sim.place = (R, twId, x, y, route) => {
     if(ids.includes('voidonly')&&tw.el!=='void') return null;
     if(ids.includes('nofrost')&&tw.el==='ice') return null;
     if(ids.includes('single')&&R.towers.some(t2=>t2.tw.id!==twId)) return null; }
+  if(R.towers.length>=(R.slotMax||5)) return null;                       // TOWER SLOTS hard cap — stacks occupy ONE slot (merge to beat the cap)
   const cost=BN.from(tw.cost); if(!BN.gte(R.essence,cost)) return null;
   R.essence=BN.sub(R.essence,cost);
-  const t={tw,x,y,route:route||[0,0,0],upLvl:0,cd:0,id:R.towers.length,spent:BN.clone(cost)};
+  const t={tw,x,y,route:route||[0,0,0],upLvl:0,cd:0,id:R.towers.length,spent:BN.clone(cost),st:1};
+  if(R.typeLvl&&R.typeLvl[tw.id]==null){R.typeLvl[tw.id]=(R.permFam&&R.permFam[tw.fam])|0;R.typeBuys[tw.id]=0;} // RATCHET: perm lvl = starting lvl
   R.towers.push(t); G.sim.towerStats(R,t); G.bus.emit('place',t);
+  return t;
+};
+G.sim.stack = (R,twId,t) => {          // META-DESIGN LOCKED: drop same-type on placed tower → merge, MAX 5; adds impact+timing (√st each ⇒ dps ×st)
+  if(!t||t.tw.id!==twId||(t.st||1)>=5) return null;
+  const cost=BN.from(t.tw.cost); if(!BN.gte(R.essence,cost)) return null;
+  R.essence=BN.sub(R.essence,cost);
+  t.st=(t.st||1)+1; t.spent=BN.add(t.spent,cost);                        // spent accrues → sell refunds the whole stack
+  G.sim.towerStats(R,t); G.bus.emit('stack',t); G.bus.emit('towersChanged',t);
   return t;
 };
 G.sim.autoPlace = (R, twId) => { // coverage heuristic: farthest lane midpoint from existing towers, off-path
@@ -1920,9 +2034,14 @@ G.sim.upgradeRoute = (R,t,pi) => { const lv=t.route[pi];
   G.bus.emit('towersChanged',t);
   return true;
 };
-G.sim.upgradeLvl = (R,t) => { const cost=BN.mulN(BN.from(t.tw.cost),Math.pow(1.12,t.upLvl)*0.6);
+G.sim.upgradeLvl = (R,t) => { const tw=t.tw, B=D().balance.ratchet,
+    lvl=(R.typeLvl&&R.typeLvl[tw.id]!=null)?R.typeLvl[tw.id]:(t.upLvl||0);
+  if(lvl>=99) return false;                                              // §1b track ceiling
+  const cost=BN.mulN(BN.from(tw.cost),B.upBaseMul*Math.pow(B.g,(R.typeBuys&&R.typeBuys[tw.id])||0)); // RATCHET: cost indexed by buys THIS RUN, not absolute lvl
   if(!BN.gte(R.essence,cost)) return false;
-  R.essence=BN.sub(R.essence,cost); t.spent=BN.add(t.spent,cost); t.upLvl++; G.sim.towerStats(R,t);
+  R.essence=BN.sub(R.essence,cost); R.typeSpent=BN.add(R.typeSpent||BN.Z(),cost); // type spend NOT in t.spent: sell must not refund shared levels
+  if(R.typeLvl){R.typeBuys[tw.id]=((R.typeBuys[tw.id])||0)+1;R.typeLvl[tw.id]=lvl+1;}else t.upLvl=lvl+1;
+  R.towers.forEach(x=>{if(x.tw.id===tw.id)G.sim.towerStats(R,x)});       // per-TYPE: applies to every placed instance (Chris sign-off)
   if(R.refund&&R.t<R.refund.until)R.essence=BN.add(R.essence,BN.mulN(cost,R.refund.p));
   G.bus.emit('towersChanged',t);
   return true; };
@@ -2073,7 +2192,7 @@ const tickEnemy = (R,e,dt) => { if(!e.alive)return;
           else { bt.rtBuff=-efx.atkTower.p; bt.rtBuffUntil=R.t+efx.atkTower.t; G.sim.towerStats(R,bt); }
           G.bus.emit('enemyCast',{e,k:efx.disable?'disable':'atkTower',tw:bt}); } }
       if(efx.snipe){ e.abT=efx.snipe.cd; if(R.boss&&R.boss.alive)R._bossHurt=1;
-        let d4=BN.mulN(e.maxhp,efx.snipe.p*.5*(1-spDR(R)));
+        let d4=BN.mulN(e.maxhp,efx.snipe.p*.5*(1-spDR(R))); R.spire.lastHit=R.t;
         if(BN.gte(R.spire.ward,d4)) R.spire.ward=BN.sub(R.spire.ward,d4);
         else { d4=BN.sub(d4,R.spire.ward); R.spire.ward=BN.Z(); R.spire.hp=BN.sub(R.spire.hp,d4);
           if(BN.isZ(R.spire.hp)) return G.sim.endRun(R,'death'); }
@@ -2103,6 +2222,7 @@ const leak = (R,e) => { if(!e.alive)return; e.alive=0; R.leaks++;
   R.enemies.forEach(v=>{ if(v.alive&&v.d.fx.lifesteal) v.hp=BN.min(v.maxhp,BN.add(v.hp,BN.mulN(d,v.d.fx.lifesteal.p))); }); // Vampire feeds on Spire wounds
   if(R.wardReflect&&R.t<R.wardReflect.until)                             // Prismatic Ward: reflect burst at the gates
     queryR(R,R.lay.spire.x,R.lay.spire.y,140).forEach(o=>{ if(o.alive) dmgTo(R,o,BN.mulN(d,R.wardReflect.p),{el:'ice',ult:1}); });
+  R.spire.lastHit=R.t;
   if(BN.gte(R.spire.ward,d)){R.spire.ward=BN.sub(R.spire.ward,d);}
   else{d=BN.sub(d,R.spire.ward);R.spire.ward=BN.Z();R.spire.hp=BN.sub(R.spire.hp,d);}
   R.comboK=Math.max(0,R.comboK-8); R.combo=BN.powN(1+.0003*(G.S.prestige.ascensions+1),R.comboK);
@@ -2158,9 +2278,14 @@ const towerTick = (R,t,dt) => { t.cd-=dt; if(t.cd>0)return;
   G.bus.emit('shot',{t,tgt,crit,dealt});
 };
 const spireTick = (R,dt) => { const sp=R.spire; sp.cd-=dt;
-  sp.ward=BN.min(sp.wardMax,BN.add(sp.ward,BN.mulN(sp.wardMax,.01*dt*(1+(R.twWard||0))))); // Aegis Beacon boosts
+  if(R.t-(sp.lastHit||-9)>3) sp.ward=BN.min(sp.wardMax,BN.add(sp.ward,BN.mulN(sp.wardMax,.10*dt*(1+(R.twWard||0))))); // §2d: 10%/s (≈6/s base) after 3s quiet; Aegis Beacon boosts
   sp.hp=BN.min(sp.hpMax,BN.add(sp.hp,BN.mulN(sp.hpMax,sp.regen*.001*dt)));
-  if(sp.cd>0)return; const cx=R.lay.spire.x,cy=R.lay.spire.y;
+  const cx=R.lay.spire.x,cy=R.lay.spire.y;
+  if(!sp.lvl.barrage){ // §6c LEVEL-0 = PASSIVE AOE PULSE: sp.d dps to ALL in range (clears early trash, never scales)
+    sp.pT=(sp.pT||0)+dt; if(sp.pT<.25)return; const pcands=queryR(R,cx,cy,sp.rg);
+    if(R.boss&&R.boss.alive&&!R.boss.untargetable&&Math.hypot(R.boss.x-cx,R.boss.y-cy)<=sp.rg)pcands.push(R.boss);
+    pcands.forEach(c=>dmgTo(R,c,BN.mulN(sp.d,sp.pT),{el:'arcane'})); sp.pT=0; return; }
+  if(sp.cd>0)return;
   const cands=queryR(R,cx,cy,sp.rg*(1+sp.lvl.barrage*.01));
   if(R.boss&&R.boss.alive&&!R.boss.untargetable&&Math.hypot(R.boss.x-cx,R.boss.y-cy)<=sp.rg)cands.push(R.boss);
   if(!cands.length)return;
@@ -2281,11 +2406,11 @@ const bossTick = (R,dt) => { const b=R.boss; if(!b||!b.alive)return;
     if(f.healFromPlants&&R.enemies.some(e=>e.alive))b.hp=BN.min(b.maxhp,BN.add(b.hp,BN.mulN(b.maxhp,f.healFromPlants)));
     if(f.overheatFired){b.overheatUntil=R.t+(f.overheatFired.window||1);b.overheatPen=f.overheatFired.t||2.5;}
     if(f.beamSweep)b.beam={until:R.t+(f.beamSweep.t||4),ang:G.rng()*Math.PI*2,rot:f.beamSweep.rot||.5};
-    if(f.convergeBeam){let dc=BN.mulN(b.maxhp,.004*(f.convergeBeam.p||3)*(1-spDR(R))); R._bossHurt=1;
+    if(f.convergeBeam){let dc=BN.mulN(R.spire.hpMax,.05*(f.convergeBeam.p||3)*(1-spDR(R))); R._bossHurt=1; R.spire.lastHit=R.t; // §2d: pool-relative (was boss-relative — one-shot past on-tier depth)
       if(BN.gte(R.spire.ward,dc))R.spire.ward=BN.sub(R.spire.ward,dc);
       else{dc=BN.sub(dc,R.spire.ward);R.spire.ward=BN.Z();R.spire.hp=BN.sub(R.spire.hp,dc);
         if(BN.isZ(R.spire.hp))G.sim.endRun(R,'death');}}
-    if(f.novaPulse){let d=BN.mulN(b.maxhp,.004*(1-spDR(R))); R._bossHurt=1;
+    if(f.novaPulse){let d=BN.mulN(R.spire.hpMax,.06*(1-spDR(R))); R._bossHurt=1; R.spire.lastHit=R.t; // §2d: pool-relative
       if(BN.gte(R.spire.ward,d))R.spire.ward=BN.sub(R.spire.ward,d);
       else{R.spire.hp=BN.sub(R.spire.hp,BN.sub(d,R.spire.ward));R.spire.ward=BN.Z();
         if(BN.isZ(R.spire.hp))G.sim.endRun(R,'death');}}
@@ -2324,7 +2449,7 @@ const bossTick = (R,dt) => { const b=R.boss; if(!b||!b.alive)return;
     if(R.round%50===0&&G.liveops&&G.liveops.passGain)G.liveops.passGain(1);
     G.bus.emit('bossKill',b);}
 };
-const leakBoss = (R,b) => { let d=BN.mulN(b.maxhp,.4*(1-spDR(R)));
+const leakBoss = (R,b) => { let d=BN.mulN(b.maxhp,.4*(1-spDR(R))); R.spire.lastHit=R.t;
   if(BN.gte(R.spire.ward,d))R.spire.ward=BN.sub(R.spire.ward,d);
   else{d=BN.sub(d,R.spire.ward);R.spire.ward=BN.Z();R.spire.hp=BN.sub(R.spire.hp,d);}
   if(BN.isZ(R.spire.hp))G.sim.endRun(R,'death'); };
@@ -2459,12 +2584,12 @@ G.sim.endRun = (R,why) => { if(R.over)return; R.over=why||'end';
   S.stats.overkills=(S.stats.overkills|0)+(R.stats.overkills|0);
   if(R.round>=50&&G.liveops&&G.liveops.passGain)G.liveops.passGain(1);
   if(G.ach)G.ach.check(S);
-  const best=S.tiers.best[R.tier]|0; if(R.round>best)S.tiers.best[R.tier]=R.round;
+  const best=S.tiers.best[R.tier]|0, newBest=R.round>best; if(newBest)S.tiers.best[R.tier]=R.round;
   if(R.hard){const bh=S.tiers.bestHard[R.tier]|0; if(R.round>bh)S.tiers.bestHard[R.tier]=R.round;}
-  if(R.round>=100){S.tiers.cleared[R.tier+'_'+R.mapIdx]=1;
+  const cleared=R.round>=100; if(cleared){S.tiers.cleared[R.tier+'_'+R.mapIdx]=1;
     const all=[0,1,2].every(i=>S.tiers.cleared[R.tier+'_'+i]);
     if(all&&S.tiers.unlocked===R.tier&&R.tier<20)S.tiers.unlocked=R.tier+1;}
-  G.bus.emit('runEnd',{R,mana}); return mana;
+  G.bus.emit('runEnd',{R,mana,newBest,prevBest:best,cleared}); return mana;
 };
 G.sim.ascend = S => { if(!G.R||G.R.round<100)return null;
   const M=G.acctMods(S), mlLog=BN.log10(S.manaLife);
@@ -2501,6 +2626,19 @@ G.sim.buyCodex = (S,book,line) => { const b=D().codex.books.find(x=>x.id===book)
 G.sim.buyFoundry = (S,twId,node) => { const f=S.foundry[twId]=S.foundry[twId]||{}; const lvl=f[node]|0;
   const cost=Math.ceil(8*Math.pow(1.25,lvl)); if((S.cores[twId]|0)<cost)return false;
   S.cores[twId]-=cost; f[node]=lvl+1; S.stats.foundryBuys=(S.stats.foundryBuys|0)+1; return true; };
+G.sim.buyPermFam = (S,fam) => { const B=D().balance.famTrack, lvl=(S.perm&&S.perm.fam&&S.perm.fam[fam])|0;
+  if(lvl>=B.max) return false;
+  const cost=BN.from(B.base*Math.pow(B.g,lvl));                          // L-th level = base·g^(L-1) Mana (§1a)
+  if(!BN.gte(S.mana,cost)) return false; S.mana=BN.sub(S.mana,cost);
+  if(!S.perm)S.perm={fam:{}}; S.perm.fam[fam]=lvl+1; return true; };     // applies NEXT run (permFam snapshots at newRun)
+G.sim.slotCost = S => { const B=D().balance.slots;                       // next slot's Mana price (null = maxed)
+  const lvl=(S.perm&&S.perm.slots)|0; return lvl>=B.max-B.start?null:BN.mulN(BN.from(B.base),Math.pow(B.g,lvl)); };
+G.sim.buySlot = (S,R) => { const cost=G.sim.slotCost(S);                 // TOWER SLOTS (META-DESIGN): permanent, one at a time, 5→15
+  if(!cost||(R&&R.restricted)) return false;                             // pure-skill runs: no meta purchases
+  if(!BN.gte(S.mana,cost)) return false; S.mana=BN.sub(S.mana,cost);
+  if(!S.perm)S.perm={fam:{},slots:0}; S.perm.slots=((S.perm.slots)|0)+1;
+  if(R&&!R.restricted)R.slotMax=Math.min(15,5+S.perm.slots);             // applies IMMEDIATELY — buy → place now
+  return true; };
 G.sim.buyLey = (S,id) => { const l=D().leylines.lines.find(x=>x.id===id); if(!l)return false;
   const lvl=S.leylines[id]|0; if(l.max&&lvl*l.per>=l.max)return false;
   const cost=BN.from(D().leylines.base*Math.pow(D().leylines.costGrowth,lvl));
@@ -2671,6 +2809,31 @@ const A = () => G.C.art;
 const BOSSHUE = { hollowking:'void', cinderwyrm:'fire', rimebound:'ice', stormroc:'storm', eldertreant:'nature',
   riftdevourer:'void', solartitan:'holy', prismhydra:'arcane', dreadsovereign:'void', forgebreaker:'phys',
   frostmonarch:'ice', elderdragon:'fire', ancientdragon:'blood' };
+/* ---- currency icon family (item 7): silhouette-first + shape+value distinct @20px; GOLD reserved
+   for reward tokens only, so no currency wears it. p = path key traced in curPath(). */
+const CURF = { essence:{c:'#5FD6FF',p:'drop'}, mana:{c:'#9A7BFF',p:'spark'}, event:{c:'#FF9B6B',p:'pennant'},
+  ucore:{c:'#FF6BC4',p:'hexcore'}, guild:{c:'#9FB4D8',p:'shield'}, prism:{c:'#7FE0FF',p:'prism',spectrum:1},
+  astral:{c:'#DCE6FF',p:'shard'} };
+/* ---- rarity frame tiers (Grey→White→Green→Blue→Purple→Gold); pip count reads the tier; M earns gold. */
+const RARF = { C:{c:'#8A94A8',n:1}, U:{c:'#E8EEF7',n:2}, R:{c:'#5FE08A',n:3},
+  E:{c:'#5FD6FF',n:4}, L:{c:'#9A7BFF',n:5}, M:{c:'#F0CF82',n:6} };
+const curPath = (ctx, p, S) => { const c = S / 2; ctx.beginPath();  // silhouette per currency, left as current path
+  if (p === 'drop') { ctx.moveTo(c, S * .1);
+    ctx.bezierCurveTo(S * .86, S * .34, S * .84, S * .68, c, S * .92);
+    ctx.bezierCurveTo(S * .16, S * .68, S * .14, S * .34, c, S * .1); ctx.closePath(); }
+  else if (p === 'spark') { const R = S * .44, r = S * .17;                     // 4-point arcane sparkle
+    for (let i = 0; i < 8; i++) { const a = -Math.PI / 2 + i * Math.PI / 4, rr = i % 2 ? r : R,
+      x = c + Math.cos(a) * rr, y = c + Math.sin(a) * rr; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.closePath(); }
+  else if (p === 'pennant') { ctx.moveTo(S * .2, S * .12); ctx.lineTo(S * .8, S * .12);
+    ctx.lineTo(S * .8, S * .8); ctx.lineTo(c, S * .64); ctx.lineTo(S * .2, S * .8); ctx.closePath(); }
+  else if (p === 'hexcore') { for (let i = 0; i < 6; i++) { const a = -Math.PI / 2 + i * Math.PI / 3,
+      x = c + Math.cos(a) * S * .4, y = c + Math.sin(a) * S * .4; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.closePath(); }
+  else if (p === 'shield') { ctx.moveTo(S * .18, S * .16); ctx.lineTo(S * .82, S * .16);
+    ctx.lineTo(S * .82, S * .48); ctx.quadraticCurveTo(S * .82, S * .82, c, S * .92);
+    ctx.quadraticCurveTo(S * .18, S * .82, S * .18, S * .48); ctx.closePath(); }
+  else if (p === 'prism') { ctx.moveTo(c, S * .12); ctx.lineTo(S * .86, S * .84); ctx.lineTo(S * .14, S * .84); ctx.closePath(); }
+  else if (p === 'shard') { ctx.moveTo(c, S * .06); ctx.lineTo(S * .68, S * .45); ctx.lineTo(c, S * .94); ctx.lineTo(S * .32, S * .45); ctx.closePath(); }
+  else { ctx.moveTo(c, S * .12); ctx.lineTo(S * .82, c); ctx.lineTo(c, S * .88); ctx.lineTo(S * .18, c); ctx.closePath(); } };
 /* ---- tiny color math (bake-time only) */
 const clamp8 = v => v < 0 ? 0 : v > 255 ? 255 : v | 0;
 const shade = (col, f) => { // f>0 lighten toward white, f<0 darken toward ink-blue
@@ -3810,7 +3973,7 @@ G.vfx = {
       const a = G.rng() * R2, v = (spd || 60) * (.4 + G.rng());
       parts[j] = x; parts[j + 1] = y; parts[j + 2] = Math.cos(a) * v; parts[j + 3] = Math.sin(a) * v - (up || 0);
       parts[j + 4] = 0; parts[j + 5] = .35 + G.rng() * .35; parts[j + 6] = 2.2 + G.rng() * 2.6; pCols[pHead] = col; } },
-  text(x, y, s, col, big) { if (texts.length >= TN) texts.shift(); texts.push({x, y, s, col, big, t: 0}); },
+  text(x, y, s, col, big, vx) { if (texts.length >= TN) texts.shift(); texts.push({x, y, s, col, big, vx: vx || 0, t: 0}); },
   bolt(x1, y1, x2, y2, col, w, life) { if (bolts.length >= BOLTN) bolts.shift();
     bolts.push({x1, y1, x2, y2, col, w: w || 1.4, t: 0, life: life || .12}); },
   anim(o) { if (anims.length >= ANIMN) anims.shift(); o.t = 0; anims.push(o); },
@@ -3849,9 +4012,11 @@ G.vfx = {
     texts.forEach(t => { ctx.globalAlpha = Math.max(0, 1 - t.t);
       const pop = t.big ? (t.t < .18 ? 1 + (1 - t.t / .18) * .5 : 1) : 1; // crit pop-in
       ctx.font = (t.big ? A.dmgFont.replace('12px', Math.round(15 * pop) + 'px') : A.dmgFont);
+      const e = 1 - (1 - t.t / 1.1) * (1 - t.t / 1.1);                    // ease-out: pop up fast, then hang
+      const tx = t.x + t.vx * e, ty = t.y - 12 - e * 28;                  // event-typed arc: lateral fan + eased rise
       ctx.strokeStyle = A.outline; ctx.lineWidth = 3;
-      ctx.strokeText(t.s, t.x, t.y - 12 - t.t * 26);
-      ctx.fillStyle = t.col; ctx.fillText(t.s, t.x, t.y - 12 - t.t * 26); });
+      ctx.strokeText(t.s, tx, ty);
+      ctx.fillStyle = t.col; ctx.fillText(t.s, tx, ty); });
     ctx.globalAlpha = 1; ctx.textAlign = 'left'; }
 };
 /* ================= TOWER shape families (baked — gradients/glow are free here) ================= */
@@ -3982,6 +4147,65 @@ const eSprite = (sil, cat, col, px, flags) => { const key = sil + '|' + cat + '|
   const out = {c: s, pad}; ESPR.set(key, out); return out;
 };
 /* ================= drawIcon (tray/store/UI — and the bake path for towers) ================= */
+/* ---- 3-tier tower evolution (DESIGN-3TIER-EVOLUTION.md §6): additive layers AFTER towerBody,
+   o.evo ∈ 1-3, CUMULATIVE (T3 shows T1+T2+T3). All bake-time (sprite cache) — never per-frame.
+   GOLD #F0CF82 appears ONLY at T3 (earned-reward law); every mark carries an ink edge (colorblind
+   shape+value, never glow alone). Pips/crowns speak each family's shape language (fam 1-7). */
+const EVOGOLD = '#F0CF82';
+const evoPips = (ctx, g, u, fam, ec, pts) => {
+  const inkS = w => { ctx.strokeStyle = A().outline; ctx.lineWidth = w; ctx.stroke(); };
+  pts.forEach(([x, y]) => {
+    if (fam === 6) { g.arc(x, y, .72, -2.5, .8); inkS(Math.max(1.6, u * .9)); g.arc(x, y, .72, -2.5, .8);
+      ctx.strokeStyle = ec; ctx.lineWidth = Math.max(1, u * .5); ctx.stroke(); return; }   // orbiting arc
+    if (fam === 1) g.arc(x, y, .62);                                                       // round ember
+    else if (fam === 2) g.ell(x, y, .78, .42);                                             // coin disc
+    else if (fam === 3) g.rr(x - .55, y - .55, 1.1, 1.1, .12);                             // square rune
+    else if (fam === 4) g.ell(x, y, .72, .5);                                              // eye (glint after)
+    else if (fam === 5) g.P([[x, y - .8], [x + .38, y], [x, y + .8], [x - .38, y]]);       // bolt sliver
+    else g.P([[x, y - .85], [x + .45, y], [x, y + .85], [x - .45, y]]);                    // astral shard
+    ctx.fillStyle = ec; ctx.fill(); inkS(Math.max(.8, u * .38));
+    if (fam === 4) { g.arc(x + .18, y - .12, .16); ctx.fillStyle = '#fff'; ctx.fill(); }
+  }); };
+const evoCrown = (ctx, g, u, fam) => {
+  const gf = () => { ctx.fillStyle = EVOGOLD; ctx.fill(); ctx.strokeStyle = A().outline; ctx.lineWidth = Math.max(.9, u * .4); ctx.stroke(); };
+  const gs = w => { ctx.strokeStyle = A().outline; ctx.lineWidth = w + Math.max(1.2, u * .55); ctx.stroke();
+    ctx.strokeStyle = EVOGOLD; ctx.lineWidth = w; ctx.stroke(); };                          // ink halo → gold stroke
+  const lw = Math.max(1.2, u * .6);
+  if (fam === 1) { g.P([[10.5, 3.5], [11.15, 1.3], [11.8, 3.4]]); gf(); g.P([[12.5, 3.4], [13.2, 1.7], [13.9, 3.5]]); gf(); }  // flame fork
+  else if (fam === 2) { g.L([[10, 3.3], [12, 1.7], [14, 3.3]]); gs(lw); }                                                       // ledger chevron
+  else if (fam === 3) { g.L([[10.1, 3.4], [10.1, 1.9], [13.9, 1.9], [13.9, 3.4]]); gs(lw); }                                    // lock bracket
+  else if (fam === 4) { g.arc(10.7, 3.1, 1.5, Math.PI * .75, Math.PI * 1.62); gs(lw);
+    g.arc(13.3, 3.1, 1.5, Math.PI * 1.38, Math.PI * 2.25); gs(lw); }                                                            // horn pair
+  else if (fam === 5) { g.L([[10.3, 3.4], [12, 1.5], [13.7, 3.4]]); gs(lw); g.L([[12, 1.5], [12, 2.9]]); gs(Math.max(1, u * .5)); } // reticle
+  else if (fam === 6) { g.P([[12, 1], [12.4, 2.1], [13.5, 2.5], [12.4, 2.9], [12, 4], [11.6, 2.9], [10.5, 2.5], [11.6, 2.1]]); gf(); } // arcane spark
+  else { g.P([[9.7, 3.6], [10.3, 1.5], [11.35, 3.1], [12, 1.1], [12.65, 3.1], [13.7, 1.5], [14.3, 3.6]]); gf(); }               // 3-point diadem
+};
+const evoBadge = (ctx, g, u, S) => { const x = 18, y = 18.2, r = 2.5, pts = [];             // fully-forged: gilt octagon,
+  for (let i = 0; i < 8; i++) { const a = Math.PI / 8 + i * Math.PI / 4; pts.push([x + Math.cos(a) * r, y + Math.sin(a) * r]); }
+  g.P(pts); ctx.fillStyle = EVOGOLD; ctx.fill();                                            // octagon SHAPE is the signal,
+  ctx.strokeStyle = A().outline; ctx.lineWidth = Math.max(1, S * .03); ctx.stroke();        // not the gold alone
+  g.P(pts.map(p => [x + (p[0] - x) * .8, y + (p[1] - y) * .8]));
+  ctx.strokeStyle = shade(EVOGOLD, -.35); ctx.lineWidth = Math.max(.6, S * .014); ctx.stroke();  // hairline seam
+  g.P([[x, y - 1.15], [x + .42, y - .3], [x + 1.15, y], [x + .42, y + .34], [x, y + 1.15], [x - .42, y + .34], [x - 1.15, y], [x - .42, y - .3]]);
+  ctx.fillStyle = A().outline; ctx.fill();                                                  // anvil-star glyph
+};
+const evoLayer = (ctx, S, col, el, tw, evo) => {
+  const u = S / 24, fam = (tw && tw.fam) || 1, ec = hue(el), g = U(ctx, S);
+  const ink = () => { ctx.strokeStyle = A().outline; ctx.lineWidth = Math.max(1, S * .028); ctx.stroke(); };
+  g.rr(7, 21.1, 10, .8, .3); ctx.fillStyle = shade(col, -.18); ctx.fill(); ink();           // T1: reinforced plinth band
+  [[8.7, 11], [15.3, 11]].forEach(p => { g.arc(p[0], p[1], .5); ctx.fillStyle = shade(col, .5); ctx.fill(); ink(); });  // shoulder rivets
+  facet(ctx, S, 10.2, 16.5, 2.6, 5);                                                        // tempered extra highlight
+  if (evo < 2) return;
+  evoPips(ctx, g, u, fam, ec, evo === 3 ? [[9.5, 9], [14.5, 9], [12, 7.4]] : [[9.5, 9], [14.5, 9]]);  // T2: runes orbit
+  g.P([[11.2, 3.2], [12.8, 3.2], [12, 4.4]]); ctx.fillStyle = A().outline; ctx.fill();      // crown notch (V cut)
+  ctx.save(); ctx.globalAlpha = .55; g.L([[12, 5], [12, 18.6]]);
+  ctx.strokeStyle = shade(col, .6); ctx.lineWidth = Math.max(1, S * .02); ctx.stroke(); ctx.restore();  // edge-light seam
+  if (evo < 3) return;
+  if (Q.shadows()) { ctx.shadowColor = EVOGOLD; ctx.shadowBlur = S * .1; }                  // T3: forged radiance
+  evoCrown(ctx, g, u, fam);
+  ctx.shadowBlur = 0;
+  evoBadge(ctx, g, u, S);
+};
 G.drawIcon = (ctx, kind, id, S, o) => { o = o || {}; const A = G.C.art, c = S / 2;
   ctx.save(); if (o.x || o.y) ctx.translate(o.x || 0, o.y || 0);
   ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.lineWidth = A.stroke;
@@ -3994,14 +4218,66 @@ G.drawIcon = (ctx, kind, id, S, o) => { o = o || {}; const A = G.C.art, c = S / 
       ctx.beginPath(); ctx.ellipse(c, c + S * .3, S * .3, S * .1, 0, 0, R2); ctx.fill(); ctx.restore(); }
     towerBody(ctx, c, S, sil, col, A, el, tw);
     ctx.shadowBlur = 0;
+    if (o.evo && kind === 'tower') evoLayer(ctx, S, col, el, tw, o.evo | 0);  // §6 evolution tiers (additive)
   }
   if (kind === 'enemy') { const col = o.col || '#9fc4ff', sil = o.sil || 'round';
     const sp = eSprite(sil, o.cat || '', col, S, o.flags || '');
     ctx.drawImage(sp.c, -sp.pad, -sp.pad, S + sp.pad * 2, S + sp.pad * 2); }
-  if (kind === 'cur') { const col = o.col || hue(o.el || 'arcane');
-    ctx.strokeStyle = col; ctx.fillStyle = col + '55';
-    ctx.beginPath(); ctx.moveTo(c, S * .12); ctx.lineTo(S * .82, c); ctx.lineTo(c, S * .88); ctx.lineTo(S * .18, c);
-    ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  if (kind === 'cur') {
+    const cu = CURF[id], col = o.col || (cu ? cu.c : hue(o.el || 'arcane'));
+    curPath(ctx, cu ? cu.p : 'gem', S);                                        // traces silhouette, current path
+    if (Q.shadows()) { ctx.shadowColor = col; ctx.shadowBlur = S * .12; }       // emissive (one-shot UI canvas)
+    const g = ctx.createLinearGradient(0, S * .12, 0, S * .9);                  // faceted body: lit crown → shaded base
+    g.addColorStop(0, shade(col, .55)); g.addColorStop(.5, col); g.addColorStop(1, shade(col, -.42));
+    ctx.fillStyle = g; ctx.fill(); ctx.shadowBlur = 0;
+    if (cu && cu.spectrum) { ctx.save(); ctx.clip(); ctx.globalCompositeOperation = 'lighter';  // prism refraction sheen
+      const sp = ctx.createLinearGradient(S * .12, S * .9, S * .88, S * .12);
+      sp.addColorStop(0, 'rgba(95,214,255,.5)'); sp.addColorStop(.5, 'rgba(154,123,255,.22)'); sp.addColorStop(1, 'rgba(255,120,196,.45)');
+      ctx.fillStyle = sp; ctx.fillRect(0, 0, S, S); ctx.restore(); }
+    ctx.save(); ctx.clip();                                                     // top specular facet
+    const hl = ctx.createLinearGradient(0, S * .12, 0, S * .55);
+    hl.addColorStop(0, 'rgba(255,255,255,.55)'); hl.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hl; ctx.fillRect(0, 0, S, S); ctx.restore();
+    ctx.lineWidth = Math.max(1.5, S * .05); ctx.strokeStyle = A.outline; ctx.stroke();  // silhouette ink
+    if (cu && cu.p === 'hexcore') { ctx.beginPath(); ctx.arc(c, c, S * .15, 0, R2);      // reactor ring + white core
+      ctx.lineWidth = Math.max(1.4, S * .045); ctx.strokeStyle = shade(col, .6); ctx.stroke();
+      ctx.beginPath(); ctx.arc(c, c, S * .055, 0, R2); ctx.fillStyle = '#fff'; ctx.fill(); }
+  }
+  if (kind === 'rframe') {
+    const ra = RARF[id] || RARF.C, col = ra.c, pad = S * .07, w = S - pad * 2, r = S * .17;
+    const rr = () => { ctx.beginPath(); ctx.moveTo(pad + r, pad);              // rounded-square frame path
+      ctx.arcTo(pad + w, pad, pad + w, pad + w, r); ctx.arcTo(pad + w, pad + w, pad, pad + w, r);
+      ctx.arcTo(pad, pad + w, pad, pad, r); ctx.arcTo(pad, pad, pad + w, pad, r); ctx.closePath(); };
+    if (Q.shadows() && id === 'M') { ctx.shadowColor = col; ctx.shadowBlur = S * .16; }  // mythic radiance
+    rr(); const bg = ctx.createLinearGradient(0, pad, 0, S - pad);             // metallic bevel stroke
+    bg.addColorStop(0, shade(col, .55)); bg.addColorStop(.5, col); bg.addColorStop(1, shade(col, -.4));
+    ctx.lineWidth = Math.max(2, S * .08); ctx.strokeStyle = bg; ctx.stroke(); ctx.shadowBlur = 0;
+    rr(); ctx.lineWidth = Math.max(1, S * .022); ctx.strokeStyle = A.outline; ctx.stroke();  // ink seam
+    const n = ra.n, gap = S * .11, y = S * .13, x0 = c - (n - 1) * gap / 2;    // tier pips read the rank
+    for (let i = 0; i < n; i++) { const px = x0 + i * gap, g = S * .045;
+      ctx.beginPath(); ctx.moveTo(px, y - g); ctx.lineTo(px + g, y); ctx.lineTo(px, y + g); ctx.lineTo(px - g, y); ctx.closePath();
+      ctx.fillStyle = shade(col, .3); ctx.fill(); ctx.lineWidth = Math.max(.8, S * .015); ctx.strokeStyle = A.outline; ctx.stroke(); }
+  }
+  if (kind === 'tab') {                    // tab-bar glyphs (DESIGN-SWEEP §1) — accent-stroked chrome, NO gold/gem
+    const col = o.col || '#5FD6FF', u = S / 24, LW = Math.max(2, S * .085);
+    const P = pts => { ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0] * u, p[1] * u) : ctx.moveTo(p[0] * u, p[1] * u)); };
+    const ink = pad => { ctx.lineWidth = LW + (pad || Math.max(1.4, S * .05)); ctx.strokeStyle = A.outline; ctx.stroke(); };
+    const acc = () => { ctx.lineWidth = LW; ctx.strokeStyle = col; ctx.stroke(); };      // ink halo → accent (reads on any bg)
+    const dot = (x, y, r) => { ctx.beginPath(); ctx.arc(x * u, y * u, r * u, 0, R2); ctx.fillStyle = A.outline; ctx.fill();
+      ctx.beginPath(); ctx.arc(x * u, y * u, r * .62 * u, 0, R2); ctx.fillStyle = col; ctx.fill(); };
+    if (id === 'spire') { P([[12, 3.8], [16, 20], [8, 20]]); ink(); acc();               // tiered obelisk + apex spark
+      P([[9.6, 14.4], [14.4, 14.4]]); ink(S * .02); acc(); P([[10.4, 10.4], [13.6, 10.4]]); ink(S * .02); acc(); dot(12, 3.4, 1.1); }
+    else if (id === 'towers') { P([[6, 20], [6, 12], [8.4, 12], [8.4, 14], [10.8, 14], [10.8, 12], [13.2, 12], [13.2, 14], [15.6, 14], [15.6, 12], [18, 12], [18, 20]]);
+      ink(); acc(); }                                                                    // crenellated battlement (a fortress of towers)
+    else if (id === 'ults') { for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4;   // ability burst around a ring
+        P([[12 + Math.cos(a) * 4.4, 12 + Math.sin(a) * 4.4], [12 + Math.cos(a) * 8, 12 + Math.sin(a) * 8]]); ink(S * .02); acc(); }
+      ctx.beginPath(); ctx.arc(12 * u, 12 * u, 3.1 * u, 0, R2); ink(S * .01); acc(); }
+    else if (id === 'prestige') { ctx.beginPath(); ctx.arc(12 * u, 12 * u, 7 * u, -0.6, 4.3); ink(); acc();  // rebirth loop + arrowhead
+      P([[16.2, 5.6], [18, 9.4], [14.1, 9.1]]); ink(S * .02); ctx.fillStyle = col; ctx.fill(); }
+    else if (id === 'store') { P([[7, 9.5], [7, 20], [17, 20], [17, 9.5]]); ink(); acc();  // shopping bag + handle
+      ctx.beginPath(); ctx.arc(12 * u, 9.5 * u, 3 * u, Math.PI, 0); ink(S * .02); acc(); }
+    else { [8, 12, 16].forEach(x => dot(x, 12, 1.5)); }                                  // more · · ·
+  }
   ctx.restore();
 };
 /* ================= main scene ================= */
@@ -4080,14 +4356,18 @@ const paintStatic = (ctx, Rn) => { const A = G.C.art, th = G.theme(), bh = biome
     ctx.beginPath(); ctx.arc(n.x, n.y, 9, 0, R2); ctx.stroke(); ctx.shadowBlur = 0;
     if (ty === 'contested') { ctx.strokeStyle = 'rgba(240,207,130,.5)'; ctx.beginPath(); ctx.arc(n.x, n.y, 13, 0, R2); ctx.stroke(); }
     if (ty === 'twin') { ctx.strokeStyle = 'rgba(212,169,78,.5)'; ctx.beginPath(); ctx.arc(n.x, n.y, 5, 0, R2); ctx.stroke(); } });
-  Rn.towers.forEach(t => { const sz = 44;
+  Rn.towers.forEach(t => { const sz = 44, st = t.st || 1;
     G.drawIcon(ctx, 'tower', t.tw.id, sz, {x: t.x - sz / 2, y: t.y - sz / 2, el: t.tw.el, baked: 1});
+    if (st > 1) { const slot = sz / 5, by = t.y + sz / 2 + 2;             // STACK bricks (META-DESIGN): 1 per stack, L→R, 5 span full width
+      for (let i = 0; i < st; i++) { const bx0 = t.x - sz / 2 + i * slot + .6;
+        ctx.fillStyle = hue(t.tw.el); ctx.globalAlpha = .92; ctx.fillRect(bx0, by, slot - 1.2, 4.5);
+        ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(10,13,24,.5)'; ctx.fillRect(bx0, by + 3.3, slot - 1.2, 1.2); } }
     ctx.fillStyle = 'rgba(230,240,255,.8)'; ctx.font = A.tagFont; ctx.textAlign = 'center';
-    ctx.fillText(t.route.join('-'), t.x, t.y + 30); ctx.textAlign = 'left'; });
+    ctx.fillText(t.route.join('-'), t.x, t.y + (st > 1 ? 37 : 30)); ctx.textAlign = 'left'; });
 };
 rd.bake = {cv: null, ctx: null, key: null, w: 0, h: 0};
 rd._bakeKey = Rn => { let sig = Rn.towers.length;
-  for (const t of Rn.towers) sig = (Math.imul(sig, 131) + (t.upLvl | 0) * 7 + (t.route[0] * 25 + t.route[1] * 5 + t.route[2]) + ((t.x + t.y * 1000) | 0)) | 0;
+  for (const t of Rn.towers) sig = (Math.imul(sig, 131) + (t.upLvl | 0) * 7 + (((t.st || 1) - 1) * 997) + (t.route[0] * 25 + t.route[1] * 5 + t.route[2]) + ((t.x + t.y * 1000) | 0)) | 0;
   return Rn.lay.staticKey + '|' + ((G.S && G.S.opt.theme) || 'aurora') + '|' + sig; };
 rd.rebake = () => { const Rn = G.R; if (!Rn || !rd.ctx) return;
   const bw = Rn.lay.W + BAKE_PAD * 2, bh = Rn.lay.H + BAKE_PAD * 2; let bc = rd.bake.cv;
@@ -4174,12 +4454,17 @@ const drawDynamic = (ctx, Rn, lod) => { const A = G.C.art;
     ctx.save(); ctx.globalCompositeOperation = 'lighter';                // eye ember — alive, no blur
     ctx.drawImage(spot(b.enraged ? '#ff6b6b' : GOLD), b.x + bsz * .1, b.y - bsz * .18, 9, 9); ctx.restore();
     ctx.globalAlpha = 1;
-    const f = Math.min(1, BN.ratio(b.hp, b.maxhp)), bw = 86;
-    ctx.fillStyle = 'rgba(8,12,24,.8)'; ctx.fillRect(b.x - bw / 2 - 1, b.y - 57, bw + 2, 8);
-    ctx.fillStyle = b.armorOn ? '#9fc4ff' : '#ff6b6b'; ctx.fillRect(b.x - bw / 2, b.y - 56, bw * f, 6);
-    ctx.strokeStyle = 'rgba(240,207,130,.55)'; ctx.lineWidth = 1; ctx.strokeRect(b.x - bw / 2 - 1, b.y - 57, bw + 2, 8);
+    const f = Math.min(1, BN.ratio(b.hp, b.maxhp)), bw = 86, bx = b.x - bw / 2, by = b.y - 56;
+    // ghost chip-damage bar: lags behind on hits, snaps up on heal — framerate-independent (sim-time keyed)
+    const gdt = b._ghT ? Math.max(0, Rn.t - b._ghT) : 0; b._ghT = Rn.t;
+    if (b._hpG == null || f > b._hpG) b._hpG = f; else b._hpG += (f - b._hpG) * Math.min(1, gdt * 3.2);
+    const rr = (x, y, w, h, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, Math.min(r, w / 2, h / 2)); else ctx.rect(x, y, w, h); };
+    ctx.fillStyle = 'rgba(8,12,24,.8)'; rr(bx - 1, by - 1, bw + 2, 8, 2.5); ctx.fill();                            // plate
+    if (b._hpG > f + .003) { ctx.fillStyle = 'rgba(255,236,214,.45)'; rr(bx, by, bw * b._hpG, 6, 2); ctx.fill(); } // chip drain
+    ctx.fillStyle = b.armorOn ? '#9fc4ff' : '#ff6b6b'; rr(bx, by, bw * f, 6, 2); ctx.fill();                       // main
+    ctx.strokeStyle = 'rgba(240,207,130,.55)'; ctx.lineWidth = 1; rr(bx - 1, by - 1, bw + 2, 8, 2.5); ctx.stroke();
     ctx.fillStyle = 'rgba(10,13,24,.9)';
-    for (let i = 1; i < 4; i++) ctx.fillRect(b.x - bw / 2 + bw * i / 4, b.y - 56, 1, 6); }
+    for (let i = 1; i < 4; i++) ctx.fillRect(bx + bw * i / 4, by, 1, 6); }                                          // segment ticks
   Rn.zones.forEach(z => { const zc = z.el ? hue(z.el) : '#a56bff';
     ctx.save(); ctx.globalAlpha = .13; ctx.fillStyle = zc; ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, R2); ctx.fill(); ctx.restore();
     ctx.strokeStyle = zc; ctx.globalAlpha = .5; ctx.setLineDash([4, 6]);
@@ -4196,7 +4481,9 @@ G.bus.on('shot', d => { const Rn = G.R; if (!Rn) return; const el = d.t.tw.el;
   G.vfx.burst(d.tgt.x, d.tgt.y, col, d.crit ? 10 : 3, d.crit ? 90 : 45);
   if (d.dealt && (d.crit || cam.lod() === 2)) { const e = d.tgt;
     if (d.crit || !e._dnT || Rn.t - e._dnT > .28) { e._dnT = Rn.t;
-      G.vfx.text(e.x, e.y - 8, '-' + G.fmt(d.dealt), d.crit ? GOLD : '#e8eefc', d.crit); } } });
+      const vx = d.crit ? (e.x >= d.t.x ? 1 : -1) * (22 + G.rng() * 14)  // crit: kicked along the shot line
+                        : (G.rng() - .5) * 34;                           // hit: slight fan so stacks separate
+      G.vfx.text(e.x, e.y - 8, '-' + G.fmt(d.dealt), d.crit ? GOLD : '#e8eefc', d.crit, vx); } } });
 G.bus.on('kill', d => { if (d.e) { const cf = (G.cosFx && G.cosFx()) || {};
   const col = (cf.kill && cf.kill.col) || CATCOL[d.e.d.cat] || '#9fc4ff';
   G.vfx.burst(d.e.x, d.e.y, col, (d.e.elite ? 16 : 8) + ((cf.kill && cf.kill.n) || 0), d.e.elite ? 90 : 70);
@@ -4277,7 +4564,7 @@ const h = (tag, cls, html) => { const el = document.createElement(tag); if (cls)
 const fmt = a => G.fmt(a);
 const EG = {fire: '▲', ice: '❄', storm: '⚡', nature: '●', void: '◆', arcane: '✦', phys: '⬟'}; // colorblind element glyphs
 const ROLE = {A: 'ECONOMY', B: 'SKILL', C: 'GAUNTLET'};
-G.ui = {tab: 'spire', sel: null, speed: 1};
+G.ui = {tab: 'spire', sel: null, speed: 1, typeOpen: null};
 /* ================= toasts + modals ================= */
 G.ui.toast = (msg, cls) => { const t = h('div', 'toast ' + (cls || ''), msg); $('#toasts').appendChild(t);
   setTimeout(() => t.classList.add('on'), 16); setTimeout(() => { t.classList.remove('on'); setTimeout(() => t.remove(), 400); }, 2600); };
@@ -4307,7 +4594,20 @@ G.applyTheme = () => { const th = G.theme(), rt = document.documentElement;
   if (cf && cf.ui) { acc = cf.ui.acc; acc2 = cf.ui.acc2; }
   rt.style.setProperty('--acc', acc); rt.style.setProperty('--acc2', acc2);
   if (th.arc) rt.style.setProperty('--arcane', th.arc);
+  if (G.ui.curIcoFlush) G.ui.curIcoFlush();
   if (G.render && G.render.markStale) G.render.markStale(); };
+/* icon <img> cache — real G.drawIcon art rendered ONCE offscreen, cached as data-URL <img> strings
+   (renderHud rebuilds innerHTML @4Hz; a live <canvas> would be wiped every rebuild). Keyed by
+   kind|id|px|col; applyTheme flushes so theme/quality swaps re-bake. */
+const CURICO = {};
+const icoImg = G.ui.icoImg = (kind, id, px, o) => { o = o || {}; const k = kind + '|' + id + '|' + px + '|' + (o.col || '') + '|' + (o.evo || ''); // evo in key: evolved looks must not collide (evolayer §6)
+  if (!CURICO[k]) { const d = Math.min((typeof devicePixelRatio !== 'undefined' && devicePixelRatio) || 1, 2),
+      cv = document.createElement('canvas'); cv.width = cv.height = Math.round(px * d);
+    const x = cv.getContext('2d'); x.scale(d, d); G.drawIcon(x, kind, id, px, o);
+    CURICO[k] = `<img class="curico" src="${cv.toDataURL()}" width="${px}" height="${px}" alt="">`; }
+  return CURICO[k]; };
+const curIco = G.ui.curIco = (id, px) => icoImg('cur', id, px || 15);
+G.ui.curIcoFlush = () => { for (const k in CURICO) delete CURICO[k]; };
 /* ================= HUD (FINAL Aurora structure) ================= */
 G.ui.renderHud = () => { const R = G.R, S = G.S, el = $('#hud'); if (!R) return;
   const md = G.D.modes[R.mode], ti = D().tiers[R.tier - 1], mp = ti.maps[R.mapIdx];
@@ -4318,8 +4618,8 @@ G.ui.renderHud = () => { const R = G.R, S = G.S, el = $('#hud'); if (!R) return;
   const wdR = Math.max(0, Math.min(1, BN.ratio(R.spire.ward, R.spire.wardMax)));
   el.innerHTML =
    `<div class="hudrow">
-      <span class="chip cur"><span class="ico">◆</span><b class="val num">${fmt(R.essence)}</b><span class="lbl">ESSENCE</span></span>
-      <span class="chip cur"><span class="ico">✦</span><b class="val num">${fmt(S.mana)}</b><span class="lbl">MANA</span></span>
+      <span class="chip cur"><span class="ico">${curIco('essence')}</span><b class="val num">${fmt(R.essence)}</b><span class="lbl">ESSENCE</span></span>
+      <span class="chip cur"><span class="ico">${curIco('mana')}</span><b class="val num">${fmt(S.mana)}</b><span class="lbl">MANA</span></span>
       <span class="sp"></span>
       <span class="wavepill"><span class="wl">WAVE</span><b class="num">${R.round}</b><em class="bmark${bossNow ? ' now' : ''}">${bossNow ? 'BOSS' : 'BOSS ' + nextBoss + ' ›'}</em></span>
     </div>
@@ -4328,7 +4628,7 @@ G.ui.renderHud = () => { const R = G.R, S = G.S, el = $('#hud'); if (!R) return;
       <div class="barline"><span class="bl">✳ WARD</span><span class="bar ward"><i style="transform:scaleX(${wdR})"></i></span><b class="bv num">${fmt(R.spire.ward)}/${fmt(R.spire.wardMax)}</b></div>
     </div>
     <div class="hudrow r3">
-      ${evLive ? `<span class="chip evt"><span class="ico">◆</span>${evLive.nm.toUpperCase()}</span>` : ''}
+      ${evLive ? `<span class="chip evt"><span class="ico">${curIco('event')}</span>${evLive.nm.toUpperCase()}</span>` : ''}
       <span class="chip">COMBO <b class="val num">×${(BN.toNum(R.combo)).toFixed(2)}</b></span>
       <span class="chip"><b class="val num">${fmt(R.income)}</b>/s</span>
       <button class="chip mode" id="modeBtn">${md.emoji} ${md.nm} ~${md.mult}×</button>
@@ -4351,26 +4651,58 @@ G.ui.renderHud = () => { const R = G.R, S = G.S, el = $('#hud'); if (!R) return;
     const bt = bb.querySelector('.bar>b'); if (bt) bt.textContent = fmt(b.hp); }
   else bb.classList.remove('on');
 };
-/* ================= build tray ================= */
+/* ================= build tray — per-TYPE bottom buttons (META-DESIGN LOCKED: the type's upgrade home) */
+G.ui.placeFailMsg = R => R.towers.length >= (R.slotMax || 5) ? `All ${R.slotMax || 5} slots used — merge stacks or buy a slot` : 'Not enough Essence';
 G.ui.renderTray = () => { const R = G.R, tray = $('#tray'); if (!R) return; tray.innerHTML = '';
+  const open = $('#sheet').classList.contains('on');
+  tray.appendChild(h('div', 'slotchip num', `⬒ ${R.towers.length}/${R.slotMax || 5}`)); // TOWER SLOTS: instances used (a stack = 1 slot)
+  const counts = {}; R.towers.forEach(t => { counts[t.tw.id] = (counts[t.tw.id] | 0) + (t.st || 1); }); // a 5-stack counts as 5
   D().towers.filter(t => t.lv <= G.S.acct.lvl + 4).slice(0, 12).forEach(tw => {
-    const afford = BN.gte(R.essence, BN.from(tw.cost));
-    const c = h('button', 'tcard el-' + tw.el + (afford ? ' afford' : '') + (G.ui.placing === tw.id ? ' sel' : ''),
-      `<canvas data-tw="${tw.id}" width="40" height="40"></canvas><b class="tn">${tw.nm}</b><span class="tc num">◆ ${tw.cost}</span>`);
-    c.onclick = () => { if (G.ui.placing === tw.id) { G.ui.placing = null; $('#placeHint').classList.remove('on'); G.ui.renderTray(); return; }
-      if (R.mode === 'idle') { G.sim.autoPlace(R, tw.id) ? G.ui.toast(tw.nm + ' placed') : G.ui.toast('Not enough Essence', 'warn'); }
-      else { G.ui.placing = tw.id; G.ui.renderTray(); $('#placeHint').classList.add('on'); $('#placeHint').textContent = 'Tap the arena to place ' + tw.nm + ' (auto-spot: double-tap card)'; } };
-    c.ondblclick = () => { G.sim.autoPlace(R, tw.id); G.ui.placing = null; $('#placeHint').classList.remove('on'); G.ui.renderTray(); };
-    tray.appendChild(c);
-    const cv = c.querySelector('canvas'), ctx = cv.getContext('2d');
-    G.drawIcon(ctx, 'tower', tw.id, 40, {el: tw.el}); });
+    const n = counts[tw.id] | 0, afford = BN.gte(R.essence, BN.from(tw.cost));
+    const c = h('button', 'tbtn el-' + tw.el + (afford ? ' afford' : '') + (n ? ' has' : '') +
+      ((open && G.ui.typeOpen === tw.id) || G.ui.placing === tw.id ? ' sel' : ''),
+      icoImg('tower', tw.id, 30, {el: tw.el}) + `<b class="tct num">×${n}</b>`);
+    c.dataset.cost = tw.cost; c.title = tw.nm + ' — ◆ ' + tw.cost;
+    c.onclick = () => G.ui.openTypePanel(tw.id);
+    c.ondblclick = () => { G.sim.autoPlace(R, tw.id) ? G.ui.toast(tw.nm + ' placed') : G.ui.toast(G.ui.placeFailMsg(R), 'warn'); G.ui.renderTray(); };
+    tray.appendChild(c); });
+  const sp = h('button', 'tbtn spire' + (open && G.ui.tab === 'spire' && !G.ui.typeOpen ? ' sel' : ''),
+    icoImg('spire', 'spire', 30) + '<b class="tct">SPIRE</b>');
+  sp.title = 'The Spire — freeform paths';
+  sp.onclick = () => { G.ui.tab = 'spire'; G.ui.renderTabs(); G.ui.openSheet('spire'); };
+  tray.appendChild(sp);
+  const sc = G.sim.slotCost(G.S);                                        // buy-slot affordance (META-DESIGN: permanent, one at a time)
+  if (sc && !R.restricted) { const bs = h('button', 'tbtn buyslot', `<b class="bsl">+SLOT</b><b class="tct num">✦${fmt(sc)}</b>`);
+    bs.title = 'Permanent tower slot — ✦ ' + fmt(sc) + ' Mana';
+    bs.onclick = () => { G.sim.buySlot(G.S, R) ? G.ui.toast(`Slot unlocked — ${R.slotMax}/15 (permanent)`) : G.ui.toast('Need Mana', 'warn'); G.ui.renderTray(); };
+    tray.appendChild(bs); }
 };
 G.ui.tapArena = w => { const R = G.R; if (!R) return;
-  if (G.ui.placing) { const t = G.sim.place(R, G.ui.placing, w.x, w.y);
-    G.ui.toast(t ? 'Placed' : 'Invalid / not enough Essence', t ? '' : 'warn');
+  if (G.ui.placing) { const twId = G.ui.placing,
+      tgt = R.towers.find(t => t.tw.id === twId && Math.hypot(t.x - w.x, t.y - w.y) <= 24); // drop ONTO same type = merge (META-DESIGN LOCKED)
+    if (tgt) return G.ui.stackFlow(R, twId, tgt);
+    const t = G.sim.place(R, twId, w.x, w.y);
+    G.ui.toast(t ? 'Placed' : G.ui.placeFailMsg(R), t ? '' : 'warn');
     G.ui.placing = null; $('#placeHint').classList.remove('on'); G.ui.renderTray(); return; }
   let best = null, bd = 40; R.towers.forEach(t => { const d = Math.hypot(t.x - w.x, t.y - w.y); if (d < bd) { bd = d; best = t; } });
-  G.render.sel = G.ui.sel = best; if (best) G.ui.openTower(best); };
+  if (best) { G.render.sel = G.ui.sel = best; return G.ui.openTypePanel(best.tw.id, best); }
+  if ($('#sheet').classList.contains('on')) return G.ui.closePanel();   // tap outside collapses — the tower keeps fighting (§2)
+  G.render.sel = G.ui.sel = null; };
+/* ---- drop-over merge flow (META-DESIGN LOCKED: max 5 · confirm dialog w/ "always ask" · Settings 3-way) */
+G.ui.stackFlow = (R, twId, tgt) => {
+  G.ui.placing = null; $('#placeHint').classList.remove('on'); G.ui.renderTray();
+  if ((tgt.st || 1) >= 5) return G.ui.toast('Max stack (5/5)', 'warn');
+  const tw = tgt.tw, doIt = () => { const ok = G.sim.stack(R, twId, tgt);
+    G.ui.toast(ok ? `Merged — ${tw.nm} stack ${tgt.st}/5` : 'Not enough Essence', ok ? '' : 'warn'); G.ui.renderTray(); };
+  const mode = (G.S.opt.stackConfirm || 'dialog');
+  if (mode === 'auto') return doIt();
+  const body = h('div', null, `<div class="wa-row"><span>${tw.nm} — adds its impact + timing</span><b class="num">${tgt.st || 1}/5 → ${(tgt.st || 1) + 1}/5</b></div><div class="wa-row"><span>Cost</span><b class="num">◆ ${tw.cost}</b></div>`);
+  let ask = null;
+  if (mode === 'dialog') { ask = h('label', 'chk', '<input type="checkbox" checked> Always ask before merging'); body.appendChild(ask); }
+  G.ui.modal('Merge tower?', body, [{nm: 'Merge', cls: 'buy', fn: () => {
+    if (ask && !ask.querySelector('input').checked) G.S.opt.stackConfirm = 'auto'; // unticking = stop asking (re-enable in Settings)
+    doIt(); }}, {nm: 'Cancel'}]);
+};
 /* ================= ult bar (glyph + cooldown sweep + state — fits the 52px slot) ============ */
 G.ui.renderUlts = () => { const R = G.R, el = $('#ults'); if (!R) return; el.innerHTML = '';
   G.S.slotted.slice(0, 5).forEach(id => { const u = D().ults.find(u => u.id === id), st = R.ults[id];
@@ -4383,18 +4715,44 @@ G.ui.renderUlts = () => { const R = G.R, el = $('#ults'); if (!R) return; el.inn
     c.oncontextmenu = e => { e.preventDefault(); su.auto = su.auto ? 0 : 1; G.ui.toast(u.nm + ' auto-cast ' + (su.auto ? 'ON' : 'OFF')); G.ui.renderUlts(); };
     el.appendChild(c); });
 };
+/* ================= run-end screens (DESIGN-NEEDS-V2 §5) — Defeat / Victory summary =========== */
+G.ui.runEnd = p => { const R = p.R, S = G.S, died = R.over === 'death', cleared = !!p.cleared;
+  let re = $('#runend'); if (!re) { re = document.createElement('div'); re.id = 'runend'; document.body.appendChild(re); }
+  const stat = (l, v) => `<div class="rerow"><span>${l}</span><b class="num">${v}</b></div>`;
+  re.className = died ? 'death' : 'clear';
+  re.innerHTML = `<div class="replate">
+    <div class="respire">${G.ui.icoImg('spire', 'spire', 72, {})}</div>
+    <h1>${died ? 'THE SPIRE HAS FALLEN' : (cleared ? 'MAP CLEARED' : 'RUN COMPLETE')}</h1>
+    <p class="resub">${died ? `Wave ${R.round} — the ward broke on T${R.tier}.` : `Wave ${R.round} — T${R.tier} ${cleared ? 'conquered' : 'banked'}.`}</p>
+    <div class="reward"><span class="ico">${curIco('mana', 16)}</span><b class="num">+${fmt(p.mana)}</b><span class="lbl">MANA</span>
+      ${p.newBest ? '<em class="best">NEW BEST</em>' : ''}${cleared ? '<em class="gclear">CLEARED</em>' : ''}</div>
+    <div class="restats">${stat('Waves held', R.round)}${stat('Kills', fmt(R.kills))}${stat('Boss kills', (R.stats.bossKills | 0))}${stat('Damage dealt', fmt(R.stats.dmg))}${stat('Overkills', (R.stats.overkills | 0))}</div>
+    <div class="rects"><button class="btn" id="reAgain">${died ? 'TRY AGAIN' : 'RUN AGAIN'}</button>${cleared
+      ? '<button class="btn pri" id="reNext">NEXT MAP</button>'
+      : '<button class="btn" id="reBack">BACK TO SPIRE</button>'}</div>
+  </div>`;
+  re.classList.add('on');
+  $('#reAgain').onclick = () => { re.classList.remove('on'); G.main.newRun({tier: R.tier, mapIdx: R.mapIdx}); };
+  const nx = $('#reNext'); if (nx) nx.onclick = () => { const nm = R.mapIdx < 2 ? R.mapIdx + 1 : 0,
+      nt = R.mapIdx < 2 ? R.tier : Math.min(R.tier + 1, (S.tiers && S.tiers.unlocked) || R.tier);
+    re.classList.remove('on'); G.main.newRun({tier: nt, mapIdx: nm}); };
+  const bk = $('#reBack'); if (bk) bk.onclick = () => re.classList.remove('on');
+};
+G.bus.on('runEnd', p => setTimeout(() => G.ui.runEnd(p), 650));   // beat: let the last moment land first
 /* ================= tab router + sheets (consolidated — More holds the meta destinations) ===== */
 const TABS = ['spire', 'towers', 'ults', 'prestige', 'store', 'more'];
-const TABI = {spire: '⟡', towers: '⌘', ults: '✦', prestige: '↺', store: '⬒', more: '⋯'};
 G.ui.renderTabs = () => { const el = $('#tabbar'); el.innerHTML = '';
-  TABS.forEach(id => { const b = h('button', 'tab' + (G.ui.tab === id ? ' on' : ''),
-      `<span class="ti">${TABI[id]}</span>${id[0].toUpperCase() + id.slice(1)}`);
+  const cs = getComputedStyle(document.documentElement);                       // authored tab glyphs (DESIGN-SWEEP §1)
+  const accC = (cs.getPropertyValue('--acc') || '').trim() || '#5FD6FF', inkC = (cs.getPropertyValue('--ink3') || '').trim() || '#5C6E8E';
+  TABS.forEach(id => { const on = G.ui.tab === id; const b = h('button', 'tab' + (on ? ' on' : ''),
+      `<span class="ti">${icoImg('tab', id, 17, {col: on ? accC : inkC})}</span>${id[0].toUpperCase() + id.slice(1)}`);
     b.onclick = () => { G.ui.tab = id; G.ui.renderTabs(); G.ui.openSheet(id); }; el.appendChild(b); }); };
 G.ui.openSheet = id => { const sh = $('#sheet'); sh.classList.add('on');
+  G.ui.typeOpen = null; G.ui._panelAfford = null; resetSheetHead();
   $('#sheetHead h2').textContent = id[0].toUpperCase() + id.slice(1);
-  $('#sheetHead .x').onclick = () => sh.classList.remove('on');
+  $('#sheetHead .x').onclick = G.ui.closePanel;
   const b = $('#sheetBody'); b.innerHTML = ''; b.className = '';
-  const build = G.ui.sheets[id]; if (build) build(b); };
+  const build = G.ui.sheets[id]; if (build) build(b); G.ui.renderTray(); };
 G.ui.sheets = {
   spire(b) { const R = G.R, sp = R.spire; // freeform anchor: ALL paths always open (never crosspath-locked)
     b.appendChild(h('div', 'card sub', 'The Spire is freeform — every path stays open. Placed towers commit to 2 paths; the Spire never does.'));
@@ -4407,10 +4765,12 @@ G.ui.sheets = {
         if (p.id === 'aegis') { sp.hpMax = BN.mulN(sp.hpMax, 1 + p.per.hp); sp.wardMax = BN.mulN(sp.wardMax, 1 + p.per.ward); }
         G.ui.openSheet('spire'); };
       row.appendChild(btn); b.appendChild(row); }); },
-  towers(b) { const R = G.R;
-    R.towers.forEach(t => { const row = h('div', 'row card sel-tower', `<div class="fill"><b>${t.tw.nm}</b><span class="sub">${t.route.join('-')} · Lv ${t.upLvl}</span></div>`);
-      row.onclick = () => G.ui.openTower(t); b.appendChild(row); });
-    if (!R.towers.length) b.appendChild(h('div', 'card sub', 'No towers yet — use the build tray.')); },
+  towers(b) { const R = G.R, seen = {};
+    R.towers.forEach(t => { if (seen[t.tw.id]) seen[t.tw.id].n++; else seen[t.tw.id] = {t, n: 1}; });
+    Object.values(seen).forEach(g => { const lvl = (R.typeLvl && R.typeLvl[g.t.tw.id]) | 0;
+      const row = h('div', 'row card sel-tower', `<div class="fill"><b>${g.t.tw.nm} ×${g.n}</b><span class="sub num">RUN LV ${lvl} · route ${g.t.route.join('-')}</span></div>`);
+      row.onclick = () => G.ui.openTypePanel(g.t.tw.id, g.t); b.appendChild(row); });
+    if (!R.towers.length) b.appendChild(h('div', 'card sub', 'No towers yet — pick a type below and PLACE.')); },
   ults(b) { const S = G.S;
     D().ults.forEach(u => { const su = S.ults[u.id] || {lvl: 0}; const slotted = S.slotted.includes(u.id);
       const cost = D().ultUp.shardCost(su.lvl | 0);
@@ -4426,6 +4786,7 @@ G.ui.sheets = {
   more(b) { // consolidated meta destinations (Settings/Social reachable — audit P0)
     [['maps', '🗺 Maps', '20 tiers · A/B/C triangle · advance gates'],
      ['codex', '✦ Codex', 'Permanent Mana research'], ['foundry', '⚒ Foundry', 'Permanent tower forging'],
+     ['permtrack', '💠 Family Tracks', 'Mana — raise each family\'s start level'],
      ['runes', '⬡ Runes', '6 slots · craft with pity · substats'],
      ['glyphs', '◈ Glyphs', 'Run-shaping builds · craft with shards'],
      ['familiars', '🦉 Familiars', 'Bind · support · awaken · bond tree'],
@@ -4437,27 +4798,93 @@ G.ui.sheets = {
       const c = h('button', 'card navcard', `<h3>${nm}</h3><span class="sub">${d}</span>`);
       c.onclick = () => G.ui.openSheet(id); b.appendChild(c); }); }
 };
-G.ui.openTower = t => { const R = G.R; G.ui.tab = 'towers'; G.ui.renderTabs();
-  const sh = $('#sheet'); sh.classList.add('on');
-  $('#sheetHead h2').textContent = t.tw.nm + ' · ' + t.route.join('-');
-  $('#sheetHead .x').onclick = () => sh.classList.remove('on');
-  const b = $('#sheetBody'); b.innerHTML = ''; b.className = '';
-  b.appendChild(h('div', 'card sub num', `DMG ${fmt(t.dmg)} · RATE ${t.rt.toFixed(2)}/s · RNG ${Math.round(t.rg)}`));
-  b.appendChild(h('div', 'card sub', 'Commit to 2 paths · only ONE past tier 2 · tier 5 = ULTIMATE'));
-  const nCommit = t.route.filter(v => v > 0).length, tallIdx = t.route.indexOf(Math.max(...t.route));
-  t.tw.p.forEach((p, pi) => { const lv = t.route[pi];
-    const locked = (!lv && nCommit >= 2) || (lv === 2 && t.route[tallIdx] > 2 && tallIdx !== pi);
-    const row = h('div', 'row card path' + (lv ? ' owned' : '') + (locked ? ' locked' : ''),
-      `<div class="fill"><b>${p.nm}${lv === 5 ? ' ★' : ''}</b><span class="sub">T${lv}/5${locked ? ' · 🔒 crosspath' : lv < 5 ? (lv === 4 ? ' · next: ' + p.t[4].u : '') : ' · ULTIMATE'}</span></div>`);
-    const btn = h('button', 'btn sm buy', 'Upgrade');
-    btn.onclick = () => { G.sim.upgradeRoute(R, t, pi) ? G.ui.openTower(t) : G.ui.toast('Locked (crosspath) or need Essence', 'warn'); };
-    row.appendChild(btn); b.appendChild(row); });
-  const lvlBtn = h('button', 'btn', '+1 Level (◆)'); lvlBtn.onclick = () => { G.sim.upgradeLvl(R, t) && G.ui.openTower(t); };
-  const pri = h('button', 'btn ghost', 'Target: ' + (t.priority || 'first'));
-  pri.onclick = () => { const o = ['first', 'strong', 'last', 'boss']; t.priority = o[(o.indexOf(t.priority || 'first') + 1) % 4]; G.ui.openTower(t); };
-  const sell = h('button', 'btn danger', 'Sell'); sell.onclick = () => { G.sim.sell(R, t); sh.classList.remove('on'); G.ui.renderTray(); };
-  const acts = h('div', 'acts row'); [lvlBtn, pri, sell].forEach(x => acts.appendChild(x)); b.appendChild(acts);
+/* ================= per-TYPE compact upgrade panel (COMPACT-UI item 1 · design-refs/11-v3-final) ===
+   ≤30vh band; chrome/CSS/render = Designer. Ratchet is per-TYPE in sim (R.typeLvl/typeBuys, LOCKED).
+   SPIREBOUND-HOOK: route buys loop the existing per-instance G.sim.upgradeRoute across placed
+   instances — swap to shared type-route state when it lands. Drag-from-tray placement, sheet
+   detents and stacking confirmMode dialogs belong to the Spirebound interaction pass. */
+const ROMAN = ['I', 'II', 'III', 'IV', 'V'], NWORD = [0, 0, 'BOTH', 'ALL THREE', 'ALL FOUR', 'ALL FIVE'];
+const routeCost = t => BN.mulN(BN.from(t.tw.cost), Math.pow(1.9, t.route[0] + t.route[1] + t.route[2]) * 2); // mirrors 07-sim upgradeRoute
+const resetSheetHead = () => { const pp = $('#sheetHead').querySelector('.permpill'); if (pp) pp.remove(); };
+G.ui.closePanel = () => { $('#sheet').classList.remove('on'); G.ui.typeOpen = null; G.ui._panelAfford = null;
+  resetSheetHead(); G.render.sel = G.ui.sel = null; G.ui.renderTray(); };
+let _buying = 0;
+G.ui.openTypePanel = (twId, inst) => { const R = G.R; if (!R) return;
+  const tw = D().towers.find(t => t.id === twId); if (!tw) return;
+  const insts = R.towers.filter(t => t.tw.id === twId), n = insts.length;
+  G.ui.typeOpen = twId; G.ui.tab = 'towers'; G.ui.renderTabs();
+  G.render.sel = G.ui.sel = (inst && insts.includes(inst)) ? inst : (insts[n - 1] || null);
+  const sh = $('#sheet'); sh.classList.add('on'); resetSheetHead();
+  $('#sheetHead h2').innerHTML = `<span class="tpn">${tw.nm}</span> <em class="num">×${n} PLACED</em>` +
+    `<span class="tpsub">${n >= 2 ? 'ONE TAP UPGRADES ' + (NWORD[n] || 'ALL ' + n) : n ? 'UPGRADES THIS TOWER' : 'NOT PLACED — PLACE TO FIGHT'}</span>`;
+  const perm = (R.permFam && R.permFam[tw.fam]) | 0, hd = $('#sheetHead');
+  hd.insertBefore(h('span', 'permpill num', `◆ PERM <b>${perm}/99</b>`), hd.querySelector('.x'));
+  $('#sheetHead .x').onclick = G.ui.closePanel;
+  const b = $('#sheetBody'); b.innerHTML = ''; b.className = ''; const affs = [];
+  if (n) { const t0 = insts[0];
+    b.appendChild(h('div', 'rcap num', `DMG ${fmt(t0.dmg)} · RATE ${t0.rt.toFixed(2)}/s · RNG ${Math.round(t0.rg)}${n > 1 ? ' · PER TOWER' : ''}`)); }
+  const agg = [0, 1, 2].map(j => n ? Math.min(...insts.map(t => t.route[j])) : 0);
+  const past2 = agg.filter(x => x > 2).length, openN = agg.filter(x => x > 0).length;
+  tw.p.forEach((p, pi) => { const lv = agg[pi];
+    const locked = n && lv < 5 && ((lv === 0 && openN >= 2) || (lv === 2 && past2 >= 1)); // 2 paths max · one past T2 (07-sim rule)
+    const row = h('div', 'tprow' + (locked ? ' locked' : ''));
+    row.appendChild(h('div', 'tpinfo', `<b>${p.nm}${lv === 5 ? ' ★' : ''}</b><span class="tpt">${lv >= 5 ? 'T5 · ' + ((p.t[4] && p.t[4].u) || 'ULTIMATE')
+      : 'T' + lv + '/5' + (lv === 4 ? ' · NEXT: ' + ((p.t[4] && p.t[4].u) || 'ULTIMATE') : '')}</span>`));
+    const pips = h('div', 'tpips');
+    for (let k = 0; k < 5; k++) pips.appendChild(h('i', 'pip' + (k < lv ? ' own' : k === lv && !locked && n && lv < 5 ? ' next' : '') + (k === 4 ? ' ult' : '')));
+    row.appendChild(pips);
+    if (!n) row.appendChild(h('span', 'tplock', 'PLACE<br>FIRST'));
+    else if (locked) row.appendChild(h('span', 'tplock', lv === 0 ? 'LOCKED<br>2 PATHS MAX' : 'LOCKED<br>ONE PAST T2'));
+    else if (lv >= 5) row.appendChild(h('span', 'tpbuy done', '<b>ULTIMATE</b><span class="tpc">OWNED</span>'));
+    else { const buyers = insts.filter(t => t.route[pi] === lv);
+      let total = BN.Z(); buyers.forEach(t => { total = BN.add(total, routeCost(t)); });
+      const btn = h('button', 'tpbuy num', `<b>BUY ${ROMAN[lv]}${buyers.length > 1 ? ' ×' + buyers.length : ''}</b><span class="tpc">◆ ${fmt(total)}</span>`);
+      btn.onclick = () => { _buying = 1; let ok = 0; buyers.forEach(t => { if (G.sim.upgradeRoute(R, t, pi)) ok++; }); _buying = 0;
+        ok ? G.ui.toast(p.nm + ' → T' + (lv + 1) + (ok > 1 ? ' ×' + ok : '')) : G.ui.toast('Need Essence', 'warn');
+        G.ui.openTypePanel(twId, G.ui.sel); };
+      affs.push(() => btn.classList.toggle('afford', BN.gte(R.essence, total)));
+      row.appendChild(btn); }
+    b.appendChild(row); });
+  /* ratchet strip — perm level = the run's STARTING level; buys price off the base ladder (LOCKED) */
+  const lvl = (R.typeLvl && R.typeLvl[twId] != null) ? R.typeLvl[twId] : perm;
+  const buys = (R.typeBuys && R.typeBuys[twId]) | 0, RB = D().balance.ratchet;
+  const rcost = BN.mulN(BN.from(tw.cost), RB.upBaseMul * Math.pow(RB.g, buys));
+  const rat = h('div', 'ratchet', `<span class="rl">RATCHET</span><span class="rbar"><i style="transform:scaleX(${Math.min(1, lvl / 99)})"></i>` +
+    `<em style="left:${(perm / 99 * 100).toFixed(1)}%"></em></span><span class="rlv num">RUN LV ${lvl}</span>`);
+  const rbuy = h('button', 'rbuy num', lvl >= 99 ? 'MAX' : `+1 ◆ ${fmt(rcost)}`);
+  rbuy.onclick = () => { if (!n) return G.ui.toast('Place one first', 'warn');
+    _buying = 1; const ok = G.sim.upgradeLvl(R, insts[0]); _buying = 0;
+    ok ? G.ui.openTypePanel(twId, G.ui.sel) : G.ui.toast(lvl >= 99 ? 'Ratchet maxed' : 'Need Essence', 'warn'); };
+  affs.push(() => rbuy.classList.toggle('afford', n > 0 && lvl < 99 && BN.gte(R.essence, rcost)));
+  rat.appendChild(rbuy); b.appendChild(rat);
+  b.appendChild(h('div', 'rcap', n ? `Runs start at your permanent level ${perm} · buy #${buys + 1} = ◆ ${fmt(rcost)} → LV ${Math.min(99, lvl + 1)}. The exponential top-end never returns.`
+    : `Runs start at permanent level ${perm}. Place a ${tw.nm} to begin the climb.`));
+  /* acts — PLACE keeps the drop flow compact (§3); target + sell per §2 */
+  const acts = h('div', 'tpacts');
+  const place = h('button', 'btn pri num', `PLACE ◆ ${tw.cost}`);
+  place.onclick = () => { if (R.mode === 'idle') { const ok = G.sim.autoPlace(R, tw.id);
+      G.ui.toast(ok ? tw.nm + ' placed' : G.ui.placeFailMsg(R), ok ? '' : 'warn'); G.ui.openTypePanel(twId); return; }
+    G.ui.placing = tw.id; G.ui.closePanel(); $('#placeHint').classList.add('on');
+    $('#placeHint').textContent = 'Tap the arena to place ' + tw.nm; };
+  affs.push(() => place.classList.toggle('dis', !BN.gte(R.essence, BN.from(tw.cost))));
+  const pri = h('button', 'btn ghost', 'TARGET: ' + ((insts[0] && insts[0].priority) || 'first').toUpperCase());
+  pri.onclick = () => { const o = ['first', 'strong', 'last', 'boss'], cur = (insts[0] && insts[0].priority) || 'first';
+    const nx = o[(o.indexOf(cur) + 1) % 4]; insts.forEach(t => { t.priority = nx; }); G.ui.openTypePanel(twId, G.ui.sel); };
+  const sell = h('button', 'btn danger', 'SELL');
+  sell.onclick = () => { const t = G.ui.sel || insts[n - 1]; if (!t) return;
+    const back = G.sim.sell(R, t); G.ui.toast('Sold +◆ ' + fmt(back)); G.ui.openTypePanel(twId); };
+  if (!n) { pri.classList.add('dis'); sell.classList.add('dis'); }
+  [place, pri, sell].forEach(x => acts.appendChild(x)); b.appendChild(acts);
+  G.ui._panelAfford = () => affs.forEach(f => f()); G.ui._panelAfford();
+  G.ui.renderTray();
 };
+G.ui.openTower = t => G.ui.openTypePanel(t.tw.id, t);
+G.bus.on('towersChanged', () => { if (!_buying && G.ui.typeOpen && $('#sheet').classList.contains('on')) G.ui.openTypePanel(G.ui.typeOpen, G.ui.sel); });
+/* swipe-down on grip/head collapses the sheet (finer detents = SPIREBOUND-HOOK) */
+let _shY = null;
+[['pointerdown', e => { _shY = e.clientY; }], ['pointermove', e => { if (_shY != null && e.clientY - _shY > 42) { _shY = null; G.ui.closePanel(); } }],
+ ['pointerup', () => { _shY = null; }], ['pointercancel', () => { _shY = null; }]].forEach(([ev, fn]) => {
+  const g = $('#sheetGrip'), hh = $('#sheetHead'); if (g) g.addEventListener(ev, fn); if (hh) hh.addEventListener(ev, fn); });
 /* ================= perk prompt (Balanced: 10s auto-pick — LOCKED #6) ================= */
 G.bus.on('perk', p => G.ui.toast('Boon offered — choose', 'good'));
 G.ui.perkWatch = () => { const R = G.R; if (!R || !R.pendingPerk || G.ui._perkOpen) return;
@@ -4474,9 +4901,9 @@ G.ui.perkWatch = () => { const R = G.R; if (!R || !R.pendingPerk || G.ui._perkOp
 };
 /* ================= tutorial (teach by doing, one beat at a time) ================= */
 const TUT = [
-  {k: 'place', msg: 'Place your first tower — tap a card, then the arena (or double-tap for auto).', done: () => G.R.towers.length > 0},
+  {k: 'place', msg: 'Pick a tower below → PLACE, then tap the arena (double-tap a card auto-places).', done: () => G.R.towers.length > 0},
   {k: 'round', msg: 'Enemies leak toward the Spire. Survive the round.', done: () => G.R.round >= 2},
-  {k: 'route', msg: 'Tap your tower → buy a route upgrade (2 paths max, one past T2).', done: () => G.R.towers.some(t => t.route[0] + t.route[1] + t.route[2] > 0)},
+  {k: 'route', msg: "Tap your tower's bottom button → BUY a path tier (2 paths max, one past T2).", done: () => G.R.towers.some(t => t.route[0] + t.route[1] + t.route[2] > 0)},
   {k: 'ult', msg: 'Arcane Nova is ready — tap it (or right-click: AUTO).', done: () => G.R.stats && G.R.t > 60},
   {k: 'mode', msg: 'Pick your pace: 😴 Idle · ⚖️ Balanced · ⚡ Active. AFK is never punished.', done: () => 1}
 ];
@@ -4486,8 +4913,12 @@ G.ui.tutTick = () => { const S = G.S; if (S.tutDone) return; const step = TUT[S.
   if (step.done()) { S.tutStep = (S.tutStep | 0) + 1; G.ui.toast('✓ ' + step.k, 'good'); } };
 /* ================= frame hook (12-main calls) ================= */
 let hudT = 0;
+G.ui.affordTick = () => { const R = G.R; if (!R) return;
+  document.querySelectorAll('#tray .tbtn[data-cost]').forEach(bt =>
+    bt.classList.toggle('afford', BN.gte(R.essence, BN.from(+bt.dataset.cost))));
+  if (G.ui._panelAfford && $('#sheet').classList.contains('on')) G.ui._panelAfford(); };
 G.ui.frame = dt => { hudT += dt; G.ui.perkWatch();
-  if (hudT > .25) { hudT = 0; G.ui.renderHud(); G.ui.renderUlts(); if (!G.S.tutDone) G.ui.tutTick(); } };
+  if (hudT > .25) { hudT = 0; G.ui.renderHud(); G.ui.renderUlts(); G.ui.affordTick(); if (!G.S.tutDone) G.ui.tutTick(); } };
 G.ui.boot = () => { G.applyTheme(); G.ui.renderTabs(); G.ui.renderTray(); G.ui.renderHud(); G.ui.renderUlts();
   document.body.classList.toggle('reduceMotion', !!(G.S && G.S.opt.reduceMotion)); };
 })();
@@ -4543,6 +4974,17 @@ Object.assign(G.ui.sheets, {
       const r = row(b, `<div class="fill"><span>${l.nm}</span><em class="pill">Lv ${lvl}</em></div>`);
       r.appendChild(btn('✦ ' + fmt(BN.from(D().leylines.base * Math.pow(D().leylines.costGrowth, lvl))), 'sm buy',
         () => { G.sim.buyLey(G.S, l.id) ? G.ui.openSheet('foundry') : G.ui.toast('Need Mana / maxed', 'warn'); })); }); },
+  /* ---------- PERM-TRACK — 7 family stat tracks (Mana · applies NEXT run as each type's START level) ---------- */
+  permtrack(b) { const S = G.S, B = D().balance.famTrack;
+    const FAMS = [[1, '🔥', 'Elemental Core'], [2, '💰', 'Support & Economy'], [3, '❄', 'Control & Disruption'],
+      [4, '🐺', 'Summoners & Minions'], [5, '🎯', 'Precision & Siege'], [6, '✦', 'Arcane & Exotic'], [7, '💠', 'Relic & Endgame']];
+    b.appendChild(h('div', 'card sub num', `✦ Mana ${fmt(S.mana)} — permanent family levels. Each level raises the <b>starting route level</b> of every tower in that family, applied at the start of your next run.`));
+    const perm = (S.perm && S.perm.fam) || {};
+    FAMS.forEach(([fam, ico, nm]) => { const lvl = perm[fam] | 0, cnt = D().towers.filter(t => t.fam === fam).length;
+      const maxed = lvl >= B.max, cost = BN.from(B.base * Math.pow(B.g, lvl));
+      const r = row(b, `<div class="fill"><b>${ico} ${nm}</b><span class="sub num">${cnt} towers · start every run at Lv ${lvl}</span><em class="pill">Lv ${lvl}/${B.max}</em></div>`, maxed ? 'bL' : '');
+      r.appendChild(maxed ? h('span', 'pill', 'MAX') : btn('✦ ' + fmt(cost), 'sm buy',
+        () => { G.sim.buyPermFam(S, fam) ? (G.ui.openSheet('permtrack'), G.ui.toast(nm + ' → Lv ' + (lvl + 1) + ' (next run)')) : G.ui.toast('Need Mana', 'warn'); })); }); },
   /* ---------- RUNES (6 slots · pity visible · craft/equip/salvage/+) ---------- */
   runes(b) { const S = G.S, RD = D().runes;
     b.appendChild(h('div', 'card sub num', `Rune Dust ${S.dust | 0} · pity — epic ${S.runes.pity.epic}/${RD.pity.epic} · legendary ${S.runes.pity.legendary}/${RD.pity.legendary} · mythic ${S.runes.pity.mythic | 0}/${RD.pity.mythic}`));
@@ -4717,7 +5159,11 @@ Object.assign(G.ui.sheets, {
     ['letters', 'sci'].forEach(v => n.appendChild(btn(v, 'sm ' + (S.opt.notation === v ? 'buy' : 'ghost'), () => { S.opt.notation = v; G.ui.openSheet('settings'); })));
     const rm = row(b, '<div class="fill"><b>Reduce motion</b><span class="sub">disables shake/slow-mo/pulses</span></div>');
     rm.appendChild(btn(S.opt.reduceMotion ? 'ON' : 'OFF', 'sm ' + (S.opt.reduceMotion ? 'buy' : 'ghost'), () => { S.opt.reduceMotion = S.opt.reduceMotion ? 0 : 1;
+      S.opt.rmTouched = 1; // explicit choice freezes OS-following (see G.main.boot)
       document.body.classList.toggle('reduceMotion', !!S.opt.reduceMotion); G.ui.openSheet('settings'); }));
+    const stk = row(b, '<div class="fill"><b>Merge confirm</b><span class="sub">dropping a same-type tower onto another (stacks to 5)</span></div>');
+    [['dialog', 'Ask + toggle'], ['confirm', 'Just confirm'], ['auto', 'Auto']].forEach(([v, nm]) => stk.appendChild(btn(nm, 'sm ' + ((S.opt.stackConfirm || 'dialog') === v ? 'buy' : 'ghost'),
+      () => { S.opt.stackConfirm = v; G.ui.openSheet('settings'); })));
     const acct = row(b, '<div class="fill"><b>Account</b><span class="sub">Guest (default) · link = local profile tag, never blocks (LOCKED #7)</span></div>');
     ['Apple', 'Google', 'Email'].forEach(p => acct.appendChild(btn(p, 'sm ghost', () => { S.provider = p; G.ui.toast('Linked ' + p + ' (local profile)'); })));
     const sv = row(b, '<div class="fill"><b>Save</b></div>');
@@ -5065,6 +5511,7 @@ G.audio = (() => {
       ctx = new AC(); master = ctx.createGain(); master.gain.value = .18;
       const comp = ctx.createDynamicsCompressor();                      // limiter: boss chords over kill spam never clip
       comp.threshold.value = -18; comp.knee.value = 24; comp.ratio.value = 8;
+      comp.attack.value = .003; comp.release.value = .2;                // explicit: fast catch on transient stacks, musical recovery — deterministic on iOS/WKWebView (don't rely on UA defaults)
       master.connect(comp); comp.connect(ctx.destination); }
     catch (e) { ctx = null; } return ctx; };
   const noise = (dur, gain, lp) => { if (!on()) return; const c = ensure(); if (!c) return;   // impact texture layer
@@ -5170,6 +5617,12 @@ G.main.boot = () => {
   let st = null; try { st = G.save.load(); } catch (e) { G.crashlog && G.crashlog.log('load', e && e.message, e && e.stack); st = null; }
   G.S = st || G.newState();
   if (safeMode) { G.S.opt.quality = 'low'; G.S.opt.reduceMotion = 1; G.safeMode = 1; } // the two heaviest boot paths, skipped below
+  else if (typeof window !== 'undefined' && window.matchMedia && !G.S.opt.rmTouched) {   // honor OS prefers-reduced-motion until the user overrides in Settings
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    G.S.opt.reduceMotion = mq.matches ? 1 : 0;
+    const follow = e => { if (G.S.opt.rmTouched) return; G.S.opt.reduceMotion = e.matches ? 1 : 0;
+      if (typeof document !== 'undefined') document.body.classList.toggle('reduceMotion', !!G.S.opt.reduceMotion); };
+    if (mq.addEventListener) mq.addEventListener('change', follow); else if (mq.addListener) mq.addListener(follow); }
   if (!G.S.time) G.S.time = {maxDateReached: 0, lastSeen: 0, install: 0};
   if (!G.S.time.install) G.S.time.install = G.gameNow();
   if (G.liveops && G.liveops.ensureInstall) G.liveops.ensureInstall(G.S);
