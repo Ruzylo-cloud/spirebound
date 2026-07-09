@@ -4726,7 +4726,11 @@ Object.assign(G.ui.sheets, {
     sv.appendChild(btn('Import', 'sm ghost', () => { const ta = h('textarea'); ta.style.cssText = 'width:100%;height:120px';
       G.ui.modal('Paste save export', ta, [{nm: 'Import', cls: 'buy', fn: () => { G.save.import(ta.value) ? location.reload() : G.ui.toast('Invalid save', 'warn'); }}, {nm: 'Cancel'}]); }));
     sv.appendChild(btn('Wipe', 'sm danger', () => { G.ui.modal('Wipe save?', 'This deletes ALL progress on this device. Export first if unsure.',
-      [{nm: 'WIPE EVERYTHING', cls: 'danger', fn: () => { G.save.wipe(); location.reload(); }}, {nm: 'Keep playing', cls: 'buy'}]); })); },
+      [{nm: 'WIPE EVERYTHING', cls: 'danger', fn: () => { G.save.wipe(); location.reload(); }}, {nm: 'Keep playing', cls: 'buy'}]); }));
+    const cl = row(b, `<div class="fill"><b>Crash Log</b><span class="sub num">${(G.crashlog ? G.crashlog.all() : []).length} local entries · never sent anywhere</span></div>`);
+    cl.appendChild(btn('Export', 'sm ghost', () => { const ta = h('textarea'); ta.style.cssText = 'width:100%;height:110px';
+      ta.value = G.crashlog ? G.crashlog.export() : '[]'; ta.readOnly = true; G.ui.modal('Crash log export', ta, [{nm: 'Close'}]); }));
+    cl.appendChild(btn('Clear', 'sm ghost', () => { if (G.crashlog) G.crashlog.clear(); G.ui.openSheet('settings'); })); },
   /* ---------- SOCIAL — local-sim guild/duo/board/friends/gifts/replays (LOCKED #7) ---------- */
   social(b) { const S = G.S, soc = G.social;
     const wkKills = soc.weekKills(S);
@@ -5036,11 +5040,12 @@ G.save.import = str => { if (!str) return false; let json = str;
   if (obj && obj.account && obj.account.provider) state.provider = obj.account.provider;
   G.S = state; try { G.save.write({force: 1}); } catch (e) {} return state; };
 G.save.wipe = () => { try { localStorage.removeItem(KEY); } catch (e) {} };
+const safeSave = () => { try { G.save.write(); } catch (e) { if (G.crashlog) G.crashlog.log('save', e && e.message, e && e.stack); } };
 G.save.startAutosave = () => { if (G.save._auto) return; G.save._auto = 1;
-  if (typeof setInterval !== 'undefined') setInterval(() => { try { G.save.write(); } catch (e) {} }, 10000);
+  if (typeof setInterval !== 'undefined') setInterval(safeSave, 10000);
   if (typeof document !== 'undefined') {
-    document.addEventListener('visibilitychange', () => { if (document.hidden) { try { G.save.write(); } catch (e) {} } });
-    if (typeof addEventListener !== 'undefined') addEventListener('pagehide', () => { try { G.save.write(); } catch (e) {} }); } };
+    document.addEventListener('visibilitychange', () => { if (document.hidden) safeSave(); });
+    if (typeof addEventListener !== 'undefined') addEventListener('pagehide', safeSave); } };
 })();
 
 /* ==== src/12-audio-main.js ==== */
@@ -5130,19 +5135,23 @@ G.main.loop = ts => { if (!G.main._running) return;
   if (!isFinite(dt) || dt < 0) dt = 0; if (dt > .1) dt = .1;                 // clamp — no spike on tab return
   if (G.render && G.render.slowmoT > 0) { G.render.slowmoT -= dt; dt *= .35; } // boss-kill slow-mo payoff
   const R = G.R;
-  if (R && !R.over) {
-    if (now - G.main._gsT > 500) { G.main._gs = (G.acctMods(G.S).gameSpeed || 1); G.main._gsT = now; } // cache research speed
-    const gs = (G.ui.speed || 1) * (G.main._gs || 1), bossLive = R.boss && R.boss.alive;
-    if (gs > 6 && !bossLive) {                                               // >6×: analytic slice (LOCKED #3)…
-      G.sim.analytic(R, dt * gs, 1);
-      G.sim.step(R, dt > .05 ? .05 : dt);                                    // …plus a live layer so bosses can spawn + VFX run
-    } else {                                                                 // ≤6× or a live boss: real-time, ≤6 substeps/frame
-      const eff = Math.min(gs, 6), total = dt * eff;
-      let n = Math.ceil(total / .05); if (n < 1) n = 1; if (n > 6) n = 6;
-      const sdt = total / n; for (let i = 0; i < n; i++) G.sim.step(R, sdt); }
-  }
-  if (G.ui && G.ui.frame) G.ui.frame(dt);
-  if (G.render && G.render.frame) G.render.frame(dt);
+  try {
+    if (R && !R.over) {
+      if (now - G.main._gsT > 500) { G.main._gs = (G.acctMods(G.S).gameSpeed || 1); G.main._gsT = now; } // cache research speed
+      const gs = (G.ui.speed || 1) * (G.main._gs || 1), bossLive = R.boss && R.boss.alive;
+      if (gs > 6 && !bossLive) {                                               // >6×: analytic slice (LOCKED #3)…
+        G.sim.analytic(R, dt * gs, 1);
+        G.sim.step(R, dt > .05 ? .05 : dt);                                    // …plus a live layer so bosses can spawn + VFX run
+      } else {                                                                 // ≤6× or a live boss: real-time, ≤6 substeps/frame
+        const eff = Math.min(gs, 6), total = dt * eff;
+        let n = Math.ceil(total / .05); if (n < 1) n = 1; if (n > 6) n = 6;
+        const sdt = total / n; for (let i = 0; i < n; i++) G.sim.step(R, sdt); }
+    }
+  } catch (e) { G.crashlog.fatal('sim', e && e.message, e && e.stack); return; }
+  try { if (G.ui && G.ui.frame) G.ui.frame(dt); }
+  catch (e) { G.crashlog.log('ui', e && e.message, e && e.stack); }          // non-fatal: HUD hiccup shouldn't kill the run
+  try { if (G.render && G.render.frame) G.render.frame(dt); }
+  catch (e) { G.crashlog.fatal('render', e && e.message, e && e.stack); }
 };
 G.main.start = () => { if (G.main._running) return; G.main._running = 1; G.main._last = 0; requestAnimationFrame(G.main.loop); };
 G.main.stop  = () => { G.main._running = 0; };
@@ -5157,14 +5166,16 @@ const installVisibility = () => { if (typeof document === 'undefined') return;
     else { G.main._last = 0; G.main.start(); } }); };                        // reseed on resume → no dt spike
 
 G.main.boot = () => {
-  let st = null; try { st = G.save.load(); } catch (e) { st = null; }
+  let safeMode = 0; try { safeMode = sessionStorage.getItem('spirebound.safemode') === '1'; sessionStorage.removeItem('spirebound.safemode'); } catch (e) {}
+  let st = null; try { st = G.save.load(); } catch (e) { G.crashlog && G.crashlog.log('load', e && e.message, e && e.stack); st = null; }
   G.S = st || G.newState();
+  if (safeMode) { G.S.opt.quality = 'low'; G.S.opt.reduceMotion = 1; G.safeMode = 1; } // the two heaviest boot paths, skipped below
   if (!G.S.time) G.S.time = {maxDateReached: 0, lastSeen: 0, install: 0};
   if (!G.S.time.install) G.S.time.install = G.gameNow();
   if (G.liveops && G.liveops.ensureInstall) G.liveops.ensureInstall(G.S);
   if (G.dev && !G.S.opt.themePicked) G.S.opt.themePicked = 1; // ?dev boots straight past the first-launch gate (headless validation)
   G.applyTheme();
-  G.ui.themeGate(() => {
+  G.ui.themeGate(() => { try {
     G.applyTheme();
     G.main.newRun({tier: (G.S.tiers && G.S.tiers.unlocked) || 1});
     G.ui.boot();
@@ -5172,8 +5183,8 @@ G.main.boot = () => {
     installGestureUnlock(); installVisibility();
     if (G.save && G.save.startAutosave) G.save.startAutosave();
     G.main.start();
-    /* return moments — the login/streak/episode beats are FELT, not swallowed */
-    if (G.liveops) {
+    /* return moments — the login/streak/episode beats are FELT, not swallowed (skipped in Safe Mode) */
+    if (G.liveops && !safeMode) {
       const lg = G.liveops.checkLogin ? G.liveops.checkLogin(G.S) : null;
       if (lg && lg.isNew && lg.streak > 1) setTimeout(() => {
         G.ui.toast('🔥 Day ' + lg.streak + ' streak' + (lg.reward ? ' — +' + (lg.reward.prisms || 0) + '△ milestone!' : ' — welcome back'), 'big'); }, 900);
@@ -5184,23 +5195,69 @@ G.main.boot = () => {
         G.ui.modal('The Long Night — Episode 1 · ' + ep.nm, '<div class="sub" style="font-size:13.5px;line-height:1.5">' + ep.tx +
           '</div><div class="wa-row" style="margin-top:10px"><em>' + ep.st + '</em></div>', [{nm: 'Kindle the Spire', cls: 'buy'}]); }, 700);
       G.S.liveops.epSeen = un;
-      if (G.liveops.runOffline) G.liveops.runOffline(G.S);
-    }
+      if (G.liveops.runOffline) G.liveops.runOffline(G.S);               // the offline analytic catch-up — likeliest single
+    } else if (G.liveops && G.liveops.ensureInstall) { G.S.time.lastSeen = G.gameNow(); } // culprit at huge idle gaps; Safe Mode skips it
     G.bus.on('achievement', a => G.ui.toast('🏆 ' + a.nm + ' — +' + a.prisms + '△' + (a.cosmetic ? ' + ' + a.cosmetic : ''), 'big'));
     G.bus.on('dailyWin', d => G.ui.toast('✅ Daily complete — +' + (d.rw.prisms || 0) + '△', 'good'));
     G.bus.on('weeklyDone', () => G.ui.toast('🗓 Weekly gauntlet CAPSTONE claimed', 'big'));
     if (G.ach) setInterval(() => { try { G.ach.check(G.S); } catch (e) {} }, 12000);
-  });
+    if (safeMode) G.ui.toast('Safe Mode — offline catch-up + effects reduced', 'warn');
+  } catch (e) { G.crashlog.fatal('boot', e && e.message, e && e.stack); } });
 };
 
-/* dev-visible / headless-detectable error sentinel — paints #errbadge; the DOM string is the
-   console-clean signal for the DoD grep. Badge only shows visually in ?dev. */
-if (typeof window !== 'undefined') {
-  const TAG = 'JS' + ' ' + 'ERROR'; // split so this source line never itself matches the DoD grep — only a real runtime paint does
-  const badge = m => { try { const b = document.getElementById('errbadge');
+/* ================= CRASH RESILIENCE — local-only, ZERO network (competition rule intact) =======
+   Ring-buffer crash log (spirebound.crashlog.v1) + a recovery overlay on fatal errors. The PRODUCTION
+   reporting layer (iOS wrapper / hosted web POSTing this buffer to brain's /api/game/crash) rides the
+   SAME G.crashlog.entries via the native bridge (12's window.webkit.messageHandlers hook, when
+   present) — this file adds NOTHING to index.html's own network surface. */
+G.BUILD = '2026.07.08-1';
+G.crashlog = (() => {
+  const KEY = 'spirebound.crashlog.v1', CAP = 30;
+  const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } };
+  const write = arr => { try { localStorage.setItem(KEY, JSON.stringify(arr.slice(-CAP))); } catch (e) {} };
+  const badge = m => { try { const b = document.getElementById('errbadge'); const TAG = 'JS' + ' ' + 'ERROR';
     if (b) { b.textContent = TAG + ': ' + m; if (G.dev) b.style.display = 'block'; } } catch (e) {} };
-  window.onerror = (msg, src, ln) => { badge(msg + ' @' + (ln || '?')); return false; };
-  if (window.addEventListener) window.addEventListener('unhandledrejection', ev => badge('' + (ev && ev.reason)));
+  const log = (phase, msg, stack) => { try { badge(phase + ': ' + String(msg || ''));
+      const arr = read();
+      arr.push({ts: Date.now(), build: G.BUILD, phase, round: (G.R && G.R.round) || 0,
+        msg: String(msg || '').slice(0, 300), stack: String(stack || '').slice(0, 800),
+        saveVer: (G.S && G.S.v) || 0});
+      write(arr); } catch (e) {} };
+  let fatalShown = 0;
+  const fatal = (phase, msg, stack) => { log(phase, msg, stack);
+    if (fatalShown) return; fatalShown = 1;
+    try { G.main.stop(); } catch (e) {}
+    try { showRecovery(String(msg || 'Unknown error')); } catch (e) {} };
+  return {log, fatal, all: read, clear: () => write([]),
+    export: () => { try { return btoa(unescape(encodeURIComponent(JSON.stringify(read())))); } catch (e) { return '[]'; } }};
+})();
+/* window-level sentinel — catches whatever the phase-scoped try/catches below don't (defense in depth) */
+if (typeof window !== 'undefined') {
+  window.onerror = (msg, src, ln, col, err) => { G.crashlog.fatal('runtime', msg + ' @' + (ln || '?'), err && err.stack); return false; };
+  if (window.addEventListener) window.addEventListener('unhandledrejection', ev => G.crashlog.fatal('promise', ev && ev.reason, ev && ev.reason && ev.reason.stack));
+}
+/* recovery overlay — reload / safe mode (skips offline catch-up, forces low quality+reduced motion,
+   the two heaviest boot-time code paths) / export log. Solid plate, on-brand, zero deps on G.ui
+   (a fatal may have hit before G.ui exists). */
+function showRecovery(msg) { if (typeof document === 'undefined') return;
+  if (document.getElementById('recover')) return;
+  const el = document.createElement('div'); el.id = 'recover';
+  el.style.cssText = 'position:fixed;inset:0;z-index:999;background:#0A0D18;display:flex;flex-direction:column;'
+    + 'align-items:center;justify-content:center;gap:14px;padding:24px;font:14px -apple-system,sans-serif;color:#e8eefc;text-align:center';
+  const mk = (tag, style, html) => { const x = document.createElement(tag); x.style.cssText = style || ''; if (html != null) x.innerHTML = html; return x; };
+  el.appendChild(mk('div', 'font-family:Georgia,serif;font-variant:small-caps;letter-spacing:.14em;font-size:22px;color:#F0CF82', 'Spirebound stumbled'));
+  el.appendChild(mk('div', 'color:#9fb0d0;font-size:12.5px;max-width:320px', 'The Spire held — your progress is saved. Something broke on screen: <span style="color:#ff8f8f">' + String(msg).slice(0, 140) + '</span>'));
+  const row = mk('div', 'display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px');
+  const btn = (label, bg, fn) => { const b = document.createElement('button');
+    b.textContent = label; b.style.cssText = 'padding:11px 18px;border-radius:11px;border:1px solid #334066;'
+      + 'background:' + bg + ';color:#e8eefc;font-weight:800;font-size:13px;min-height:44px'; b.onclick = fn; return b; };
+  row.appendChild(btn('Reload', 'linear-gradient(180deg,#5FD6FF,#4bb8de)', () => { try { G.save.write({force: 1}); } catch (e) {} location.reload(); }));
+  row.appendChild(btn('Safe Mode', '#1C2230', () => { try { sessionStorage.setItem('spirebound.safemode', '1'); } catch (e) {} location.reload(); }));
+  row.appendChild(btn('Export Log', '#1C2230', () => { const ta = document.createElement('textarea');
+    ta.style.cssText = 'width:min(80vw,360px);height:110px;margin-top:10px;background:#14171F;color:#e8eefc;border:1px solid #334066;border-radius:8px;padding:8px';
+    ta.value = G.crashlog.export(); ta.readOnly = true; el.appendChild(ta); ta.select(); }));
+  el.appendChild(row);
+  document.body.appendChild(el);
 }
 if (typeof document !== 'undefined') {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', G.main.boot);
