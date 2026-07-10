@@ -135,6 +135,16 @@ h1,h2,h3{font-weight:800;letter-spacing:.02em}
 .pip.own{background:linear-gradient(135deg,var(--acc),var(--acc2));border-color:transparent;box-shadow:0 0 6px color-mix(in srgb,var(--acc) 45%,transparent)}
 .pip.next{border-color:var(--acc)}
 .pip.ult.own{box-shadow:0 0 9px color-mix(in srgb,var(--acc2) 70%,transparent)}
+#tipbox{position:fixed;z-index:90;max-width:250px;padding:7px 10px;border-radius:9px;pointer-events:none;opacity:0;transform:translateY(3px);
+  transition:opacity .12s,transform .12s;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line2);
+  box-shadow:0 6px 20px rgba(0,0,0,.5),inset 0 1px 0 color-mix(in srgb,var(--acc) 26%,transparent);font-size:10.5px;line-height:1.45;color:var(--ink2)}
+#tipbox.on{opacity:1;transform:none}
+#tipbox b{color:var(--ink);display:block;font-size:11px;letter-spacing:.05em;margin-bottom:1px}
+#tipbox em{display:block;color:var(--ink3);font-style:normal;font-size:8.5px;letter-spacing:.08em;margin-top:3px}
+#placeHint::after{content:'';position:absolute;inset:-7px;border-radius:14px;border:1.5px solid color-mix(in srgb,var(--acc) 65%,transparent);
+  animation:coachring 1.6s ease-out infinite;pointer-events:none}/* coach-mark spotlight ring (DESIGN-NEEDS-V2 §3) */
+@keyframes coachring{0%{transform:scale(.94);opacity:.9}70%{transform:scale(1.06);opacity:0}100%{opacity:0}}
+@media (prefers-reduced-motion: reduce){#placeHint::after{animation:none;opacity:.45}}
 .pipg{width:18px;height:18px;display:block;flex:0 0 auto}/* effect-glyph tier tiles (path §4) — art carries state, CSS only sizes */
 .pipg img{display:block;width:18px;height:18px}
 @media (max-width:430px){/* 390-class: reclaim row width so BUY never clips (18px bake downscales crisp at 2x DPR) */
@@ -4609,7 +4619,10 @@ const tagMark = (x, bs, fl, gc) => { const u = bs / 10, c = bs / 2; x.strokeStyl
   else { x.moveTo(c - 3 * u, c - 3.4 * u); x.lineTo(c + u, c + 3.4 * u); x.moveTo(c + .4 * u, c - 3.4 * u); x.lineTo(c + 3.4 * u, c + 2 * u); }
   x.stroke(); };
 /* live status row under an enemy/boss body: up to 3 badges + freeze encasement ring */
-const statusRow = (ctx, e, sz) => { const bd = [];
+const statusRow = (ctx, e, sz) => { const s0 = e.st;
+  if (!(e.stun > 0 || e.frz > 0 || e.slow > 0 || e.shred > 0 || e.vuln > 1
+    || (s0 && (s0.burn || s0.poison || s0.bleed)))) return;              // zero-alloc early-out (perfBudget)
+  const bd = [];
   if (e.stun > 0) bd.push(['stun', '#ffe066']);
   if (e.st && e.st.burn) bd.push(['burn', hue('fire')]);
   if (e.st && e.st.poison) bd.push(['poison', hue('nature')]);
@@ -4623,7 +4636,138 @@ const statusRow = (ctx, e, sz) => { const bd = [];
     ctx.beginPath(); ctx.arc(e.x, e.y, sz * .52, 0, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = .8;
     ctx.beginPath(); ctx.arc(e.x, e.y, sz * .52 + 2, 0, Math.PI * 2); ctx.stroke(); } };
-G.art = G.art || {}; G.art._path = {pathDom, PGKEYS, pathTile, stBadge, statusRow, TAGB};
+/* ---- live-ops icon families (sweep D4): 12 season medallions · 13 event chips · pass reward marks.
+   Same 24-grid + ink-halo language; pathGlyph reused where the meaning is identical. ---- */
+const glyphKit = (ctx, S, ac, glow) => { const g = U(ctx, S), lw = Math.max(1.3, S * .088), th = lw * .66;
+  const ink = w => { ctx.shadowBlur = 0; ctx.strokeStyle = A().outline; ctx.lineWidth = (w || lw) + Math.max(1, S * .052); ctx.stroke(); };
+  const acc = w => { if (glow) { ctx.shadowColor = ac; ctx.shadowBlur = S * .09; } ctx.strokeStyle = ac; ctx.lineWidth = w || lw; ctx.stroke(); ctx.shadowBlur = 0; };
+  const st = w => { ink(w); acc(w); };
+  const fl = c2 => { ctx.shadowBlur = 0; ctx.fillStyle = c2 || ac; ctx.fill(); ctx.strokeStyle = A().outline; ctx.lineWidth = Math.max(.8, S * .042); ctx.stroke(); };
+  const dot = (x, y, r) => { g.arc(x, y, r); fl(); };
+  return {g, lw, th, ink, acc, st, fl, dot}; };
+const STHEME = {awakening: '#FFB46B', solstice: '#FFD34D', convergence: '#9A7BFF', hallowseve: '#FF8A3D',
+  runewar: '#C9A86A', starfall: '#8FE8FF', ascendant: '#C9BFFF'};
+const SEEL = {emberfall: 'fire', frostbound: 'ice', tempest: 'storm', verdant: 'nature', voidstirs: 'void'};
+const SEHUE = id => STHEME[id] || hue(SEEL[id] || 'arcane');
+const seasonIcon = (ctx, S, sIdx) => {
+  const se = (G.D.seasons || [])[Math.max(0, (sIdx | 0) - 1)] || {id: 'awakening'};
+  const ac = SEHUE(se.id), K = glyphKit(ctx, S, ac, 0), {g, st, fl, dot, th} = K;
+  g.arc(12, 12, 10.2); const bg = ctx.createLinearGradient(0, S * .06, 0, S * .96);
+  bg.addColorStop(0, shade('#1C2230', .12)); bg.addColorStop(1, '#0E1322'); ctx.fillStyle = bg; ctx.fill();
+  ctx.strokeStyle = ac; ctx.lineWidth = Math.max(1.2, S * .06); ctx.stroke();
+  g.arc(12, 12, 10.2); ctx.strokeStyle = A().outline; ctx.lineWidth = Math.max(.6, S * .024); ctx.stroke();
+  switch (se.id) {
+    case 'awakening': g.L([[6.2, 14.5], [17.8, 14.5]]); st(th);
+      g.arc(12, 14.5, 3.9, Math.PI, 0); fl();
+      g.L([[12, 7.4], [12, 9.2]]); st(th * .8); g.L([[8.1, 8.9], [9.3, 10.3]]); st(th * .8);
+      g.L([[15.9, 8.9], [14.7, 10.3]]); st(th * .8); break;
+    case 'emberfall': pathGlyph(ctx, S, 'burn', ac, 0); break;
+    case 'frostbound': pathGlyph(ctx, S, 'freeze', ac, 0); break;
+    case 'tempest': g.P([[13.5, 4.8], [8.6, 13], [11.5, 13], [9.6, 19.2], [16.2, 10.6], [12.9, 10.6], [15.4, 4.8]]); fl(); break;
+    case 'verdant': g.L([[12, 18.6], [12, 9]]); st(th);
+      g.P([[12, 12.2], [8.2, 9.6], [9.6, 6.4], [12, 9.4]]); fl();
+      g.P([[12, 10.6], [15.8, 8.2], [14.4, 5.2], [12, 7.8]]); fl(); break;
+    case 'voidstirs': g.arc(12, 12, 5.7); fl(shade(ac, -.2));
+      ctx.fillStyle = '#0E1322'; g.arc(14.2, 10.4, 5.1); ctx.fill();
+      g.arc(12, 12, 5.7); ctx.strokeStyle = ac; ctx.lineWidth = th; ctx.stroke(); break;
+    case 'solstice': dot(12, 12, 3.1);
+      for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4;
+        g.L([[12 + Math.cos(a) * 4.9, 12 + Math.sin(a) * 4.9], [12 + Math.cos(a) * 7.4, 12 + Math.sin(a) * 7.4]]); st(th * .8); } break;
+    case 'convergence': g.P([[12, 5.8], [17.6, 16.4], [6.4, 16.4]]); st(th);
+      ['#5FD6FF', '#9A7BFF', '#FF78C4'].forEach((c2, i) => { ctx.save(); ctx.globalAlpha = .85;
+        g.arc(12, 12, 7.3 + i * 1.5, -0.45, 0.45); ctx.strokeStyle = c2; ctx.lineWidth = th * .8; ctx.stroke(); ctx.restore(); }); break;
+    case 'hallowseve': g.arc(12, 12, 5.8); fl();
+      ctx.fillStyle = '#0E1322'; g.arc(14.4, 10, 4.6); ctx.fill();
+      ctx.fillStyle = '#0E1322'; g.P([[9.2, 13.2], [10, 15.8], [10.8, 13.2]]); ctx.fill();
+      g.P([[11.8, 13.6], [12.6, 16.2], [13.4, 13.6]]); ctx.fill(); break;
+    case 'runewar': g.rr(7.4, 6.4, 9.2, 4.6, 1); fl();
+      g.L([[12, 11], [12, 18.6]]); st(); dot(17.7, 8.7, .9); break;
+    case 'starfall': g.P([[12.8, 5.5], [14.2, 10.6], [18.8, 12], [14.2, 13.4], [12.8, 18.5], [11.4, 13.4], [6.8, 12], [11.4, 10.6]]); fl();
+      g.L([[5.6, 5.8], [8.8, 9]]); st(th * .7); g.L([[7.8, 4.6], [10, 6.8]]); st(th * .6); break;
+    default: g.P([[6.6, 16.4], [6.6, 8.6], [9.5, 11.5], [12, 7.2], [14.5, 11.5], [17.4, 8.6], [17.4, 16.4]]); fl();
+      g.L([[6.6, 16.4], [17.4, 16.4]]); st(th * .7); dot(12, 14.1, .95); }
+};
+const eventIcon = (ctx, S, type) => {
+  const ac = (G.theme && G.theme().acc) || '#5FD6FF', K = glyphKit(ctx, S, ac, 0), {g, st, fl, dot, th} = K;
+  g.rr(2.4, 2.4, 19.2, 19.2, 4.4); const bg = ctx.createLinearGradient(0, S * .08, 0, S * .96);
+  bg.addColorStop(0, shade('#1C2230', .06)); bg.addColorStop(1, shade('#12172A', -.18));
+  ctx.fillStyle = bg; ctx.fill(); ctx.strokeStyle = shade('#1C2230', .22); ctx.lineWidth = Math.max(1, S * .05); ctx.stroke();
+  switch (type) {
+    case 'milestone': g.rr(5, 13.6, 3.4, 5.4, .9); fl(shade(ac, -.25)); g.rr(10.3, 10.4, 3.4, 8.6, .9); fl(shade(ac, -.1));
+      g.rr(15.6, 6.4, 3.4, 12.6, .9); fl(); break;
+    case 'doubledrops': g.P([[9, 6.2], [11.6, 10.8], [9, 13.7], [6.4, 10.8]]); fl();
+      g.P([[15, 10.2], [17.6, 14.8], [15, 17.7], [12.4, 14.8]]); fl(); break;
+    case 'bossrush': pathGlyph(ctx, S, 'vsBoss', ac, 0); break;
+    case 'collection': pathGlyph(ctx, S, 'sum', ac, 0); break;
+    case 'festival': g.L([[5, 6.8], [12, 9.4], [19, 6.8]]); st(th * .8);
+      [[7.6, 7.5], [12, 9.3], [16.4, 7.5]].forEach(p => { g.P([[p[0] - 1.2, p[1]], [p[0] + 1.2, p[1]], [p[0], p[1] + 3]]); fl(); }); break;
+    case 'restricted': pathGlyph(ctx, S, 'silence', ac, 0); break;
+    case 'gauntlet': g.L([[9.2, 4.8], [9.2, 19.2]]); st(th); g.L([[14.8, 4.8], [14.8, 19.2]]); st(th);
+      [8, 12, 16].forEach(y => { g.L([[9.2, y], [14.8, y]]); st(th * .75); }); break;
+    case 'invasion': g.L([[5.4, 17], [18.6, 17]]); st(th);
+      [8, 12, 16].forEach((x2, i) => { const yy = i === 1 ? 12.4 : 11;
+        g.L([[x2, 5.2], [x2, yy - 2.6]]); st(th * .8); g.P([[x2, yy], [x2 - 1.5, yy - 2.6], [x2 + 1.5, yy - 2.6]]); fl(); }); break;
+    case 'puzzle': g.rr(6.4, 7.4, 11.2, 11.2, 1.8); st(th); g.arc(12, 7.2, 2, Math.PI, 0); st(th * .8); break;
+    case 'coopraid': g.arc(9.6, 12, 4.4); st(th); g.arc(14.4, 12, 4.4); st(th); break;
+    case 'ranked': g.rr(5, 12.2, 4.1, 6.8, .8); fl(shade(ac, -.25)); g.rr(9.95, 8.6, 4.1, 10.4, .8); fl();
+      g.rr(14.9, 10.6, 4.1, 8.4, .8); fl(shade(ac, -.25)); break;
+    case 'championship': g.arc(12, 12.6, 6.8, Math.PI * .6, Math.PI * 1.15); st(th * .8);
+      g.arc(12, 12.6, 6.8, Math.PI * 1.85, Math.PI * 2.4); st(th * .8);
+      g.P([[12, 7.2], [13, 10.6], [16.4, 10.6], [13.7, 12.7], [14.7, 16], [12, 14], [9.3, 16], [10.3, 12.7], [7.6, 10.6], [11, 10.6]]); fl(); break;
+    default: g.rr(6.6, 9.6, 10.8, 8.8, 1.2); st(th); g.L([[5.8, 9.6], [18.2, 9.6]]); st(th);
+      g.L([[12, 9.6], [12, 18.4]]); st(th * .75);
+      g.arc(10.6, 7.9, 1.4, Math.PI * .3, Math.PI * 1.55); st(th * .7);
+      g.arc(13.4, 7.9, 1.4, Math.PI * 1.45, Math.PI * 2.7); st(th * .7); }
+};
+const rewardIcon = (ctx, S, id, o) => {
+  const ac = (o && o.col) || (G.theme && G.theme().acc) || '#5FD6FF', K = glyphKit(ctx, S, ac, 0), {g, st, fl, dot, th} = K;
+  switch (id) {
+    case 'key': g.arc(8.6, 8.4, 3.1); st(th); g.L([[10.8, 10.6], [17, 16.8]]); st();
+      g.L([[14.4, 14.2], [12.9, 15.7]]); st(th * .8); g.L([[16.2, 16], [14.7, 17.5]]); st(th * .8); break;
+    case 'gift': g.rr(6.6, 9.8, 10.8, 8.6, 1.2); st(th); g.L([[5.8, 9.8], [18.2, 9.8]]); st(th);
+      g.L([[12, 9.8], [12, 18.4]]); st(th * .75); g.arc(10.5, 7.9, 1.5, Math.PI * .3, Math.PI * 1.55); st(th * .7);
+      g.arc(13.5, 7.9, 1.5, Math.PI * 1.45, Math.PI * 2.7); st(th * .7); break;
+    case 'skin': g.arc(12, 12, 6.6); st(th); dot(9.4, 9.8, 1); dot(12.6, 8.6, 1); dot(14.9, 11.2, 1);
+      ctx.fillStyle = '#0E1322'; g.arc(14.3, 14.6, 2.1); ctx.fill(); break;
+    case 'trail': dot(15.6, 8.4, 2.1); g.L([[13.4, 10.6], [6.4, 17.6]]); st(th);
+      g.L([[15.9, 11.3], [10.4, 16.7]]); st(th * .65); break;
+    case 'frame': g.L([[9, 6], [6, 6], [6, 9]]); st(th); g.L([[15, 6], [18, 6], [18, 9]]); st(th);
+      g.L([[18, 15], [18, 18], [15, 18]]); st(th); g.L([[9, 18], [6, 18], [6, 15]]); st(th); break;
+    case 'bubble': g.rr(5.4, 6.4, 13.2, 9.6, 3); st(th); g.P([[9, 15.9], [8, 18.9], [11.9, 15.9]]); fl();
+      dot(9.2, 11.2, .85); dot(12, 11.2, .85); dot(14.8, 11.2, .85); break;
+    case 'speed': pathGlyph(ctx, S, 'rt', ac, 0); break;
+    case 'axp': case 'boost': pathGlyph(ctx, S, 'ramp', ac, 0); break;
+    case 'aura': pathGlyph(ctx, S, 'aura', ac, 0); break;
+    default: pathGlyph(ctx, S, 'crit', ac, 0); }
+};
+/* route-committed path accents (sweep D9: 3 upgrade-state visuals × 54 towers, parameterized) —
+   additive AFTER towerBody + evoLayer, bake-path only (static layer re-bakes on towersChanged).
+   Path A = left banner fin · B = right emitter orb · C = base ring segments; intensity ramps with
+   tier. T5 = ULT FORM: the ult's dominant glyph in a gilt micro-octagon crowning the tower. */
+const pathStateLayer = (ctx, S, tw, route, el) => {
+  if (!tw || !route) return; const g = U(ctx, S), base = hue(el);
+  const ink = w => { ctx.strokeStyle = A().outline; ctx.lineWidth = w; ctx.stroke(); };
+  route.forEach((rv, pi) => { if (!rv) return; const f = Math.min(1, rv / 4), c2 = shade(base, .15 + f * .3);
+    if (pi === 0) {            /* banner fin, left shoulder — grows with tier */
+      const hgt = 3 + rv * 1.1; g.P([[6.2, 12.5], [6.2, 12.5 - hgt], [9.2, 12.5 - hgt * .62]]);
+      ctx.fillStyle = c2; ctx.fill(); ink(Math.max(.8, S * .028));
+    } else if (pi === 1) {     /* emitter orb, right shoulder — brightens, ring at T3+ */
+      g.arc(17.6, 10.6 - rv * .35, 1 + rv * .22); ctx.fillStyle = shade(base, .45); ctx.fill(); ink(Math.max(.8, S * .028));
+      if (rv >= 3) { g.arc(17.6, 10.6 - rv * .35, 2.1 + rv * .22); ctx.strokeStyle = c2; ctx.lineWidth = Math.max(.7, S * .024); ctx.stroke(); }
+    } else {                   /* base ring segments — one per tier, around the plinth */
+      for (let i = 0; i < rv; i++) { const a0 = Math.PI * .62 + i * .34;
+        g.arc(12, 19.2, 4.6, a0, a0 + .26); ctx.strokeStyle = c2; ctx.lineWidth = Math.max(1, S * .045); ctx.stroke(); } }
+    if (rv >= 5) {             /* T5 ULT FORM — gilt octagon + dominant ult glyph (ref-06 crown law) */
+      const cell = tw.p && tw.p[pi] && tw.p[pi].t ? tw.p[pi].t[4] : null, gk = pathDom(cell);
+      const ox = pi === 0 ? 7 : pi === 1 ? 17 : 12, oy = pi === 2 ? 22.6 : 3.4, os = S * .38;
+      ctx.save(); ctx.translate(ox * (S / 24) - os / 2, oy * (S / 24) - os / 2);
+      const pts = []; for (let i = 0; i < 8; i++) { const a = Math.PI / 8 + i * Math.PI / 4;
+        pts.push([os / 2 + Math.cos(a) * os * .48, os / 2 + Math.sin(a) * os * .48]); }
+      ctx.beginPath(); pts.forEach((p2, i) => i ? ctx.lineTo(p2[0], p2[1]) : ctx.moveTo(p2[0], p2[1])); ctx.closePath();
+      ctx.fillStyle = '#141A2C'; ctx.fill(); ctx.strokeStyle = EVOGOLD; ctx.lineWidth = Math.max(1, os * .09); ctx.stroke();
+      pathGlyph(ctx, os, gk, base, 0); ctx.restore(); } });
+};
+G.art = G.art || {}; G.art._path = {pathDom, PGKEYS, pathTile, stBadge, statusRow, TAGB, seasonIcon, eventIcon, rewardIcon, pathStateLayer};
 G.drawIcon = (ctx, kind, id, S, o) => { o = o || {}; const A = G.C.art, c = S / 2;
   ctx.save(); if (o.x || o.y) ctx.translate(o.x || 0, o.y || 0);
   ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.lineWidth = A.stroke;
@@ -4637,6 +4781,7 @@ G.drawIcon = (ctx, kind, id, S, o) => { o = o || {}; const A = G.C.art, c = S / 
     towerBody(ctx, c, S, sil, col, A, el, tw);
     ctx.shadowBlur = 0;
     if (o.evo && kind === 'tower') evoLayer(ctx, S, col, el, tw, o.evo | 0);  // §6 evolution tiers (additive)
+    if (o.route && kind === 'tower') pathStateLayer(ctx, S, tw, o.route, el); // D9 route-committed accents + T5 ult crown
   }
   if (kind === 'enemy') { const col = o.col || '#9fc4ff', sil = o.sil || 'round';
     const sp = eSprite(sil, o.cat || '', col, S, o.flags || '');
@@ -4700,6 +4845,10 @@ G.drawIcon = (ctx, kind, id, S, o) => { o = o || {}; const A = G.C.art, c = S / 
     const pp = String(id).split('.'), twp = G.D.towerById ? G.D.towerById[pp[0]] : (G.D.towers || []).find(t => t.id === pp[0]);
     pathTile(ctx, S, twp, pp[1] | 0, pp[2] | 0, o);
   }
+  if (kind === 'season') seasonIcon(ctx, S, id);        // live-ops families (sweep D4)
+  if (kind === 'event') eventIcon(ctx, S, id);
+  if (kind === 'reward') rewardIcon(ctx, S, id, o);
+  if (kind === 'glyph') pathGlyph(ctx, S, id, (o && o.col) || hue((o && o.el) || 'arcane'), 0); // bare vocabulary glyph (store previews, tooltips)
   ctx.restore();
 };
 /* ================= main scene ================= */
@@ -4801,7 +4950,7 @@ const paintStatic = (ctx, Rn) => { const A = G.C.art, th = G.theme(), bh = biome
     if (ty === 'contested') { ctx.strokeStyle = 'rgba(240,207,130,.5)'; ctx.beginPath(); ctx.arc(n.x, n.y, 13, 0, R2); ctx.stroke(); }
     if (ty === 'twin') { ctx.strokeStyle = 'rgba(212,169,78,.5)'; ctx.beginPath(); ctx.arc(n.x, n.y, 5, 0, R2); ctx.stroke(); } });
   Rn.towers.forEach(t => { const sz = 44, st = t.st || 1, ch = G.sim.masteryCh(G.S, t.tw.id);
-    G.drawIcon(ctx, 'tower', t.tw.id, sz, {x: t.x - sz / 2, y: t.y - sz / 2, el: t.tw.el, baked: 1, evo: ch});
+    G.drawIcon(ctx, 'tower', t.tw.id, sz, {x: t.x - sz / 2, y: t.y - sz / 2, el: t.tw.el, baked: 1, evo: ch, route: t.route});
     if (ch >= 3) { ctx.strokeStyle = GOLD; ctx.lineWidth = 1.6;           // FORGED ring — gold is reward-only; 100% mastery IS the reward
       ctx.beginPath(); ctx.arc(t.x, t.y, sz / 2 + 2.5, 0, R2); ctx.stroke(); }
     if (st > 1) { const slot = sz / 5, by = t.y + sz / 2 + 2;             // STACK bricks (META-DESIGN): 1 per stack, L→R, 5 span full width
@@ -5000,6 +5149,704 @@ rd.frame = dt => { const ctx = rd.ctx, Rn = G.R; if (!ctx) return;
 };
 })();
 
+/* ==== src/strings.js ==== */
+/* SPIREBOUND i18n — string table + t() helper (ship-blocker scaffold).
+   Single source of user-facing English copy for the HUD, menus, tooltips, tutorial,
+   run-end and store surfaces (src/09-ui.js + src/10-meta-ui.js + src/00-head.html).
+
+   Contract (keep it tiny — this is a lookup, not a framework):
+     G.t(key)            -> string for `key` in the active locale, else the key itself
+     G.t(key, {n: 5})    -> same, with {token} placeholders filled from the params object
+     G.t.has(key)        -> boolean, for optional/there-may-be-no-copy call sites
+     G.t.locale          -> active locale id (only 'en' ships today)
+
+   Load order: this part attaches to the G namespace from 01-core.js and MUST run
+   BEFORE 09-ui.js and 10-meta-ui.js. In the concatenated self-contained build the
+   files are globbed as src/[0-9][0-9]-*.js and sorted, so this file is committed as a
+   numbered part (see EXTRACTION-PLAN.md, "Build integration"). It is self-guarding:
+   if G is missing it no-ops rather than throwing.
+
+   Conventions:
+   - Keys are dot-namespaced by surface: hud.*, run.*, store.*, settings.* …
+   - DISPLAY CASE lives in the string. Where the current code SHOUTS via .toUpperCase()
+     inline (e.g. "ESSENCE", tab labels, element names), the table stores the shouted
+     form so the extraction can DROP the transform — some languages must not be
+     mechanically upper-cased. Sub-strings that are still upper-cased from live *data*
+     (event names, rarities) keep their transform at the call site; see the plan.
+   - Emoji / element glyphs are ICONOGRAPHY, not copy, and stay at the call site.
+   - Interpolation tokens: {n} round/count, {name} proper noun, {tier}, {v} value,
+     {a}/{b} operands, {cost}, {pct}. */
+(() => {
+  if (typeof window === 'undefined' || !window.G) return;
+  const G = window.G;
+
+  const en = {
+    /* ---------- app shell / brand ---------- */
+    'app.title': 'SPIREBOUND',
+    'app.name': 'Spirebound',
+    'app.noscript': 'Spirebound requires JavaScript.',
+
+    /* ---------- generic actions / words reused everywhere ---------- */
+    'common.close': 'Close',
+    'common.cancel': 'Cancel',
+    'common.save': 'Save',
+    'common.equip': 'Equip',
+    'common.equipped': 'Equipped ✓',
+    'common.unequip': 'Unequip',
+    'common.claim': 'Claim',
+    'common.claimed': '✓',
+    'common.start': 'Start',
+    'common.run': 'Run',
+    'common.upgrade': 'Upgrade',
+    'common.empty': 'empty',
+    'common.locked': 'locked',
+    'common.on': 'ON',
+    'common.off': 'OFF',
+    'common.lv': 'Lv {n}',
+    'common.lvOf': 'Lv {n}/{max}',
+    'common.max': 'MAX',
+    'common.owned': 'OWNED',
+    'common.lockedCaps': 'LOCKED',
+    'common.needMana': 'Need Mana',
+    'common.needEssence': 'Need Essence',
+    'common.queued': ' · QUEUED',
+    'common.alreadyQueued': 'Already queued for next run',
+    'common.claimedTag': ' · CLAIMED',
+
+    /* ---------- theme gate (first-launch threshold) ---------- */
+    'gate.brand': 'SPIREBOUND',
+    'gate.story': 'The Long Night has come. The Spire is the last light — hold it.',
+    'gate.title': 'Choose your night',
+    'gate.note': 'Change anytime in Settings.',
+    'gate.defaultBadge': 'DEFAULT',
+
+    /* ---------- HUD ---------- */
+    'hud.essence': 'ESSENCE',
+    'hud.mana': 'MANA',
+    'hud.wave': 'WAVE',
+    'hud.spire': 'SPIRE',
+    'hud.ward': 'WARD',
+    'hud.combo': 'COMBO',
+    'hud.income': '{v}/s',
+    'hud.boss': 'BOSS',
+    'hud.bossNext': 'BOSS {n} ›',
+    'hud.mode': '{emoji} {name} ~{mult}×',
+    'hud.famNone': '—',
+    'hud.famLevel': 'LV {n}',
+    'hud.famLevelAwaken': 'LV {n} ★{star}',
+    'hud.ctx': '◆ T{tier} · {tierName} — MAP {slot} · {mapName} <em class="arch">{arch}</em>',
+    'hud.ctxRaid': '◆ T{tier} · {tierName} — ⚔ RAID · {boss} <em class="arch">ON MAP {slot}</em>',
+    'hud.raid': '⚔ RAID',
+    'hud.raidClear': 'CLEAR!',
+    'hud.retire': '🏳 RETIRE',
+    'hud.speed': '{n}×',
+    'hud.placeHint': 'Tap the arena to place {name}',
+
+    /* map roles (also used on the Maps sheet) */
+    'role.A': 'ECONOMY',
+    'role.B': 'SKILL',
+    'role.C': 'GAUNTLET',
+
+    /* boss bar */
+    'boss.tag': 'BOSS — {name}',
+    'boss.tierTag': 'TIER BOSS — {name}',
+    'boss.modTag': '{mod} · {rest}',
+
+    /* ---------- retire / retreat (endless-push: bank on your terms) ---------- */
+    'retire.title': 'Retire & bank?',
+    'retire.titleRaid': 'Retreat from the raid?',
+    'retire.body': 'End the run at wave {n} on your terms',
+    'retire.bodyRaid': 'Fall back at raid wave {n} — the boss keeps the tier',
+    'retire.mana': '✦ ~{v} Mana',
+    'retire.go': 'RETIRE & BANK',
+    'retire.goRaid': 'RETREAT & BANK',
+    'retire.stay': 'Keep fighting',
+
+    /* ---------- pace modes ---------- */
+    'mode.idle': 'Idle',
+    'mode.balanced': 'Balanced',
+    'mode.active': 'Active',
+
+    /* ---------- ultimates (right rail) ---------- */
+    'ult.ready': 'READY',
+    'ult.tip': '{name} — {desc}',
+    'ult.autoOn': '{name} auto-cast ON',
+    'ult.autoOff': '{name} auto-cast OFF',
+    'ult.tipMeta': '{el} · CD {cd}s · hold/right-click: auto-cast',
+
+    /* ---------- bottom tabs ---------- */
+    'tab.spire': 'Spire',
+    'tab.towers': 'Towers',
+    'tab.ults': 'Ults',
+    'tab.prestige': 'Prestige',
+    'tab.store': 'Store',
+    'tab.more': 'More',
+
+    /* ---------- build tray + arena ---------- */
+    'tray.cost': '◆ {cost}',
+    'tray.placed': '{name} placed',
+    'tray.needEssence': 'Not enough Essence',
+    'tray.slotsFull': 'All {n} slots used — merge stacks or buy a slot',
+    'tray.spireTip': 'The Spire — freeform paths',
+    'tray.buySlot': '+SLOT',
+    'tray.buySlotTip': 'Permanent tower slot — ✦ {v} Mana',
+    'tray.slotUnlocked': 'Slot unlocked — {n}/15 (permanent)',
+    'arena.placed': 'Placed',
+    'arena.invalid': 'Invalid / not enough Essence',
+
+    /* ---------- stack / merge flow (META-DESIGN: drop onto same type) ---------- */
+    'stack.max': 'Max stack (5/5)',
+    'stack.merged': 'Merged — {name} stack {n}/5',
+    'stack.title': 'Merge tower?',
+    'stack.body': '{name} — adds its impact + timing',
+    'stack.cost': 'Cost',
+    'stack.ask': 'Always ask before merging',
+    'stack.go': 'Merge',
+
+    /* ---------- run-end (defeat / victory) ---------- */
+    'run.fallen': 'THE SPIRE HAS FALLEN',
+    'run.cleared': 'MAP CLEARED',
+    'run.complete': 'RUN COMPLETE',
+    'run.subDeath': 'Wave {n} — the ward broke on T{tier}.',
+    'run.subWin': 'Wave {n} — T{tier} {state}.',
+    'run.raidHolds': 'THE RAID HOLDS',
+    'run.raidCleared': '⚔ RAID CLEARED',
+    'run.subRaidDeath': '{boss} holds T{tier} — raid wave {n}.',
+    'run.subRaidWin': '{boss} falls on {map}{suffix}.',
+    'run.tierUnlocked': ' — TIER {n} UNLOCKED',
+    'run.sigReplay': ' — signature replay',
+    'run.raidTag': '⚔ RAID',
+    'run.stateConquered': 'conquered',
+    'run.stateBanked': 'banked',
+    'run.rewardMana': 'MANA',
+    'run.newBest': 'NEW BEST',
+    'run.clearedTag': 'CLEARED',
+    'run.statWaves': 'Waves held',
+    'run.statKills': 'Kills',
+    'run.statBossKills': 'Boss kills',
+    'run.statDamage': 'Damage dealt',
+    'run.statOverkills': 'Overkills',
+    'run.statHeroLevel': 'Hero level',
+    'run.tryAgain': 'TRY AGAIN',
+    'run.runAgain': 'RUN AGAIN',
+    'run.raidAgain': 'RAID AGAIN',
+    'run.nextTier': 'NEXT TIER',
+    'run.enterRaid': '⚔ ENTER THE RAID',
+    'run.nextMap': 'NEXT MAP',
+    'run.backToSpire': 'BACK TO SPIRE',
+
+    /* ---------- perk / boon prompt ---------- */
+    'boon.offered': 'Boon offered — choose',
+    'boon.choose': 'Choose a Boon',
+    'boon.autoPick': 'auto-pick in <b id="boonCd" class="num">10</b>s',
+
+    /* ---------- tutorial (teach-by-doing) ---------- */
+    'tut.place': 'Pick a tower below → PLACE, then tap the arena (double-tap a card auto-places).',
+    'tut.round': 'Enemies leak toward the Spire. Survive the round.',
+    'tut.route': "Tap your tower's bottom button → BUY a path tier (2 paths max, one past T2).",
+    'tut.ult': 'Arcane Nova is ready — tap it (or right-click: AUTO).',
+    'tut.mode': 'Pick your pace: 😴 Idle · ⚖️ Balanced · ⚡ Active. AFK is never punished.',
+    'tut.stepDone': '✓ {step}',
+    'tut.skip': 'SKIP ›',
+    'tut.skipped': 'Tutorial skipped — the game teaches as you go',
+
+    /* ---------- SPIRE sheet ---------- */
+    'spire.blurb': 'The Spire is freeform — every path stays open. Placed towers commit to 2 paths; the Spire never does.',
+
+    /* ---------- TOWERS sheet + per-TYPE upgrade panel ---------- */
+    'towers.empty': 'No towers yet — pick a type below and PLACE.',
+    'towers.groupSub': 'RUN LV {lvl} · route {route}',
+    'towers.stats': 'DMG {dmg} · RATE {rate}/s · RNG {rng}',
+    'towers.target': 'TARGET: {mode}',
+    'towers.target.first': 'FIRST',
+    'towers.target.strong': 'STRONG',
+    'towers.target.last': 'LAST',
+    'towers.target.boss': 'BOSS',
+    'towers.sell': 'SELL',
+    'towers.sold': 'Sold +◆ {v}',
+
+    /* per-TYPE compact panel (COMPACT-UI item 1) */
+    'panel.placedCount': '×{n} PLACED',
+    'panel.subNone': 'NOT PLACED — PLACE TO FIGHT',
+    'panel.subOne': 'UPGRADES THIS TOWER',
+    'panel.subMany': 'ONE TAP UPGRADES {word}',
+    'panel.n2': 'BOTH',
+    'panel.n3': 'ALL THREE',
+    'panel.n4': 'ALL FOUR',
+    'panel.n5': 'ALL FIVE',
+    'panel.nMany': 'ALL {n}',
+    'panel.perm': '◆ PERM <b>{n}/99</b>',
+    'panel.perTower': ' · PER TOWER',
+    'panel.tierMax': 'T5 · {u}',
+    'panel.tierAt': 'T{n}/5',
+    'panel.tierNext': ' · NEXT: {u}',
+    'panel.ultimate': 'ULTIMATE',
+    'panel.placeFirst': 'PLACE<br>FIRST',
+    'panel.lock2': 'LOCKED<br>2 PATHS MAX',
+    'panel.lockPast': 'LOCKED<br>ONE PAST T2',
+    'panel.ownedTag': 'OWNED',
+    'panel.buy': 'BUY {tier}',
+    'panel.ratchet': 'RATCHET',
+    'panel.runLv': 'RUN LV {n}',
+    'panel.ratchetBuy': '+1 ◆ {cost}',
+    'panel.placeOne': 'Place one first',
+    'panel.ratchetMax': 'Ratchet maxed',
+    'panel.ratchetCap': 'Runs start at your permanent level {perm} · buy #{n} = ◆ {cost} → LV {next}. The exponential top-end never returns.',
+    'panel.ratchetCapEmpty': 'Runs start at permanent level {perm}. Place a {name} to begin the climb.',
+    'panel.place': 'PLACE ◆ {cost}',
+
+    /* ---------- ULTS sheet ---------- */
+    'ults.loadout': 'LOADOUT: <b>{n}/{max} equipped</b> — each ult fires AUTO (on cooldown, AFK-safe) or MANUAL (hold-and-sync for bosses).',
+    'ults.coresBal': '⬢ <b>{n}</b> Ultimate Cores',
+    'ults.sub': '{desc} · {cd}s',
+    'ults.needCores': 'Need Ultimate Cores',
+    'ults.unlock': '⬢ {cost} Unlock',
+    'ults.unlocked': '{name} unlocked!',
+    'ults.autoBtn': 'AUTO ⟳',
+    'ults.manualBtn': 'MANUAL ✋',
+    'ults.toAuto': '{name} → AUTO',
+    'ults.toManual': '{name} → MANUAL',
+    'ults.slot': 'Slot',
+    'ults.unslot': 'Unslot',
+    'ults.slotsFull': '{n} slots max — unslot one first',
+
+    /* ---------- MORE menu (meta destinations) ---------- */
+    'more.maps': '🗺 Maps',
+    'more.mapsSub': '20 tiers · A/B/C triangle · ⚔ raid gates',
+    'more.heroes': '⟠ Heroes',
+    'more.heroesSub': 'One per run · auto-levels 1→20 · spikes 3/7/12/20',
+    'more.codex': '✦ Codex',
+    'more.codexSub': 'Permanent Mana research',
+    'more.foundry': '⚒ Foundry',
+    'more.foundrySub': 'Permanent tower forging',
+    'more.permtrack': '💠 Family Tracks',
+    'more.permtrackSub': "Mana — raise each family's start level",
+    'more.runes': '⬡ Runes',
+    'more.runesSub': '6 slots · craft with pity · substats',
+    'more.glyphs': '◈ Glyphs',
+    'more.glyphsSub': 'Run-shaping builds · craft with shards',
+    'more.familiars': '🦉 Familiars',
+    'more.familiarsSub': 'Bind · support · awaken · bond tree',
+    'more.achievements': '🏆 Achievements',
+    'more.achievementsSub': 'A primary Prism faucet — auto-awards',
+    'more.chronicle': '📖 Chronicle',
+    'more.chronicleSub': 'The Long Night — 26 episodes',
+    'more.events': '◆ Events',
+    'more.eventsSub': 'Season · pass · dailies · tournaments',
+    'more.social': '⚑ Social',
+    'more.socialSub': 'Guild · duo · gifts · leaderboards',
+    'more.settings': '⚙ Settings',
+    'more.settingsSub': 'Theme · quality · save',
+
+    /* ---------- CODEX ---------- */
+    'codex.mana': '✦ Mana {v}',
+    'codex.locked': 'Unlocks at {v} lifetime Mana',
+    'codex.needMana': 'Need Mana',
+    'codex.cap': ' · cap {pct}%',
+
+    /* ---------- FOUNDRY ---------- */
+    'foundry.blurb': '⚒ Permanent forging — survives every run. Cores drop from kills by the tower that lands them. The 12-node MASTERY SPINE opens placed towers pre-built (33/66/100% → route tier 1/3/5 on your committed path).',
+    'foundry.forged': '★ FORGED',
+    'foundry.cores': '⬢ {n} cores · spine {pct}%{opens} · d{d} rt{rt} rg{rg}',
+    'foundry.opensT': ' · opens T{t}',
+    'foundry.bossGate': '🔒 {n} bosses',
+    'foundry.bossGateMsg': 'Chapter locked — defeat {n} bosses ({k} so far)',
+    'foundry.needCores': 'Need Cores',
+    'foundry.leyTitle': 'Ley-Lines',
+    'foundry.leySub': 'research — stacks uncapped',
+    'foundry.leyFail': 'Need Mana / maxed',
+
+    /* ---------- FAMILY TRACKS (perm-track — 7 family start-level ladders) ---------- */
+    'famtrack.blurb': '✦ Mana {v} — permanent family levels. Each level raises the <b>starting route level</b> of every tower in that family, applied at the start of your next run.',
+    'famtrack.rowSub': '{n} towers · start every run at Lv {lvl}',
+    'famtrack.up': '{name} → Lv {n} (next run)',
+    'famtrack.f1': 'Elemental Core',
+    'famtrack.f2': 'Support & Economy',
+    'famtrack.f3': 'Control & Disruption',
+    'famtrack.f4': 'Summoners & Minions',
+    'famtrack.f5': 'Precision & Siege',
+    'famtrack.f6': 'Arcane & Exotic',
+    'famtrack.f7': 'Relic & Endgame',
+
+    /* ---------- RUNES ---------- */
+    'runes.header': 'Rune Dust {dust} · pity — epic {ep}/{epMax} · legendary {leg}/{legMax} · mythic {myth}/{mythMax}',
+    'runes.craftTitle': 'Craft Rune',
+    'runes.craftSub': '60 dust — dust drops from bosses + salvage',
+    'runes.craftBtn': 'Craft (60)',
+    'runes.craftOk': '⚙ {rar} {slot} rune!',
+    'runes.craftFail': 'Need 60 dust',
+    'runes.slotMain': 'main: {main}',
+    'runes.slotFilled': '{rar} +{plus}',
+    'runes.inventory': 'Inventory ({n})',
+    'runes.noSubs': 'no substats',
+    'runes.upFail': 'Need dust / maxed',
+    'runes.salvage': 'Salvage',
+
+    /* ---------- GLYPHS ---------- */
+    'glyphs.header': '◈ {shards} Chroma Shards · equipped {eq}/{max} · legendary cap {cap}',
+    'glyphs.needShards': 'Need Shards',
+    'glyphs.capFail': 'Slots full / legendary cap',
+    'glyphs.craftCost': '◈ {cost}',
+
+    /* ---------- FAMILIARS ---------- */
+    'fam.header': 'Menagerie {owned}/{total} · Attunement Dust {dust} · support slots {slots} (bound Lv20/40)',
+    'fam.bound': ' — BOUND',
+    'fam.supportTag': ' — SUPPORT',
+    'fam.lockedUnlock': '🔒 {type}',
+    'fam.stats': 'LV {lvl} · AXP {axp}/{need}',
+    'fam.bind': 'Bind',
+    'fam.support': 'Support',
+    'fam.unassign': 'Unassign',
+    'fam.supportFail': 'Support locked (bound Lv20/40)',
+    'fam.awaken': 'Awaken',
+    'fam.awakenFail': 'Need dust / max ★',
+    'fam.bondTitle': 'Bond Tree',
+    'fam.bondSub': 'spend Attunement Dust — permanent familiar mastery',
+    'fam.bondLvl': 'Lv {n}/10',
+    'fam.bondCost': '{cost} dust',
+    'fam.bondFail': 'Need dust / maxed',
+
+    /* ---------- ACHIEVEMENTS ---------- */
+    'ach.header': '{done}/{total} complete — rewards auto-award the moment you earn them',
+    'ach.catAll': 'ALL',
+    'ach.catProg': 'PROG',
+    'ach.catMast': 'MAST',
+    'ach.catComb': 'COMB',
+    'ach.catEco': 'ECO',
+    'ach.catColl': 'COLL',
+    'ach.catSoc': 'SOC',
+    'ach.catChal': 'CHAL',
+
+    /* ---------- CHRONICLE ---------- */
+    'chron.header': '<b>THE LONG NIGHT</b> — {un}/{total} episodes',
+    'chron.season': ' · Season {s} “{name}” · Drop {drop}',
+    'chron.ep': 'Ep {n} · {name}',
+    'chron.epLocked': 'Ep {n} · ???',
+    'chron.epLockedSub': 'unlocks S{s} · biweekly drop',
+
+    /* ---------- HEROES sheet (§6a — one per run, spike arcs) ---------- */
+    'heroes.blurb': 'ONE hero per run — auto-levels <b>1→20</b> (+1/kill, +10·wave), ability spikes at <b>3 / 7 / 12 / 20</b>. Familiar is a separate passive aura — bring both.',
+    'heroes.picked': 'PICKED',
+    'heroes.pick': 'Pick',
+    'heroes.pickToast': '{name} picked — leads your NEXT run',
+    'heroes.srcPass': 'SEASON PASS CAPSTONE',
+    'heroes.srcEvent': 'EVENT SHOP',
+    'heroes.srcGuild': 'GUILD SHOP',
+    'heroes.srcShop': 'STORE',
+
+    /* ---------- sheet titles (openSheet header) ---------- */
+    'sheet.maps': 'Maps',
+    'sheet.heroes': 'Heroes',
+    'sheet.codex': 'Codex',
+    'sheet.foundry': 'Foundry',
+    'sheet.permtrack': 'Family Tracks',
+    'sheet.runes': 'Runes',
+    'sheet.glyphs': 'Glyphs',
+    'sheet.familiars': 'Familiars',
+    'sheet.achievements': 'Achievements',
+    'sheet.chronicle': 'Chronicle',
+    'sheet.events': 'Events',
+    'sheet.social': 'Social',
+    'sheet.settings': 'Settings',
+
+    /* ---------- MAPS ---------- */
+    'maps.blurb': 'Advance = <b>R100 on all 3 maps → ⚔ RAID (pick your map)</b> → next tier. [A] Economy · [B] Skill (Long-Exposure) · [C] Gauntlet.',
+    'maps.tierBest': '{biome} · reward ×{mul} · best R{best}',
+    'maps.tierHardBest': ' · hard R{best}',
+    'maps.mapCurrent': ' — CURRENT',
+    'maps.mapCleared': ' · R100 ✓',
+    'maps.hard': 'Hard',
+    'maps.runToast': 'T{tier} · {name}',
+    'maps.raidTitle': '⚔ RAID · {boss}',
+    'maps.raidClearedTag': 'CLEARED ✓',
+    'maps.raidReplaySub': 'replay the encounter — pick your map',
+    'maps.raidSub': 'signature boss + waves together — afkable if over-progressed, punishing on-level. Pick your map:',
+    'maps.raidToast': '⚔ RAID · {boss} — {map}',
+    'maps.raidLocked': '⚔ RAID — locked',
+    'maps.raidLockedSub1': 'clear 1 more map at R100 to face {boss}',
+    'maps.raidLockedSubN': 'clear {n} more maps at R100 to face {boss}',
+    'maps.raidFallback': 'Signature Boss',
+    'maps.bossFallback': 'the tier boss',
+    'maps.bossShort': 'Boss',
+
+    /* ---------- PRESTIGE ---------- */
+    'prestige.header': 'Highest Round — Normal R{normal} · Hard R{hard} · Ordeal Marks {marks}',
+    'prestige.ascTitle': 'Ascension',
+    'prestige.ascSub': 'R100+ → Relics (keeps runes/glyphs/foundry/ults/familiars)',
+    'prestige.ascBtn': 'ASCEND',
+    'prestige.ascReach': 'Reach R100',
+    'prestige.ascOk': 'Ascended! +{v} Relics',
+    'prestige.ascFail': 'Reach round 100 first',
+    'prestige.relicFail': 'Need Relics / maxed',
+    'prestige.perLvRounds': '+{v} rounds/lv · {k}',
+    'prestige.perLvPct': '+{v}%/lv · {k}',
+    'prestige.transTitle': 'Transcendence',
+    'prestige.transSub': '{relics} Relics + {asc} Ascensions → Aether (resets relic tree)',
+    'prestige.transBtn': 'TRANSCEND',
+    'prestige.transOk': 'Transcended! +{v} Aether',
+    'prestige.transFail': 'Not yet — {relics} relics + {asc} ascensions',
+    'prestige.aetherFail': 'Need Aether',
+    'prestige.convTitle': 'Convergence',
+    'prestige.convSub': '100 Aether + 5 Transcendences — resets all but cosmetics',
+    'prestige.restrictTitle': 'Restricted mode',
+    'prestige.restrictSub': 'pure skill, zero meta — the wallet-immune Ranked ruleset',
+    'prestige.restrictBtn': 'Start Restricted Run',
+
+    /* ---------- STORE ---------- */
+    'store.motto': '“Money never buys power.”',
+    'store.wallet': '△ {prisms} Prisms · ◈ {shards} Shards · ✦ Motes {motes} · 🗝 Cache keys {keys}',
+    'store.cacheTitle': 'Arcane Cache',
+    'store.cacheSub': 'pity — epic {ep}/{epMax} · legendary {leg}/{legMax} · dupes → motes',
+    'store.cacheBtn': 'Open (key / 150△)',
+    'store.cacheNeed': 'Need a key or 150△',
+    'store.cacheHit': '✨ {rar} — {name}!',
+    'store.cacheDupe': '✦ {rar} dupe → motes',
+    'store.featured': 'FEATURED',
+    'store.featuredSub': 'weekly rotation · Returns-tagged',
+    'store.featuredTag': ' · FEATURED',
+    'store.itemSub': '{cat} · {tier}',
+    'store.seasonTag': ' · S{s}',
+    'store.returnsTag': ' · Returns next year',
+    'store.pricePrisms': '△ {price}',
+    'store.priceMotes': '✦{price}',
+    'store.needPrisms': 'Need Prisms — dailies, achievements, pass',
+    'store.needMotes': 'Need motes',
+    'store.packsTitle': 'Prism packs',
+    'store.packsSub': 'competition build — every Prism is earnable free (LOCKED #7)',
+    'store.packsBtn': '△ Packs',
+    'store.packsToast': 'Competition build — every Prism is earnable free ✨',
+    'store.equippedToast': '{name} equipped',
+
+    /* ---------- EVENTS (season / pass / dailies / tournament) ---------- */
+    'events.bootNeeded': '<b>Season engine boots with the run.</b>',
+    'events.seasonTitle': '{emoji} Season {s} · {name}',
+    'events.seasonSub': ' — week {week}, Drop {drop} · “The Long Night” continues in the Chronicle',
+    'events.live': ' — LIVE',
+    'events.eventSub': '{type} · wk{wk} · pays {cur}',
+    'events.liveBonus': ' · +15% Essence drops NOW',
+    'events.tokBal': '⬡ <b>{n}</b> Event Tokens',
+    'events.shopTitle': '<b>EVENT SHOP — {name}</b> (closes with the event; tokens never strand)',
+    'events.heroEmbra': 'Embra Ashvow — event hero',
+    'events.heroVoltra': 'Voltra Kess — event hero',
+    'events.heroSub': 'hero shards — permanent roster unlock',
+    'events.needTokens': 'Need Event Tokens',
+    'events.heroJoins': '{name} joins the roster!',
+    'events.draughtTitle': 'Surge Draught',
+    'events.draughtSub': 'next run +15% Essence (consumable)',
+    'events.draughtGo': 'Surge Draught queued — next run +15% Essence',
+    'events.skinFrost': 'Frost Veil',
+    'events.skinFrostSub': 'event tower skin',
+    'events.skinFrostGot': 'Frost Veil unlocked',
+    'events.passTitle': 'Season Pass · Lv {lvl}/50',
+    'events.passSub': '+speed stacks are PERMANENT and also earnable free (§N)',
+    'events.passPremium': 'Premium 990△',
+    'events.passPremiumNeed': 'Need 990△ (earnable)',
+    'events.passPremiumBtn': 'Premium',
+    'events.passPremiumMissing': 'Premium pass needed',
+    'events.tierRow': 'free: {free} · premium: {prem}',
+    'events.tierReach': 'Reach pass Lv {n}',
+    'events.alreadyClaimed': 'Claimed',
+    'events.dailiesTitle': 'Dailies',
+    'events.dailiesSub': '{n} lifetime · weekly gauntlet {done}/7',
+    'events.dailiesCapstone': ' · capstone ✓',
+    'events.dailyRow': 'reach R{goal} with the mod active · +{prisms}△',
+    'events.dailyRowShards': ' +{shards}◈',
+    'events.dailyStart': 'Daily: {name} — reach R{goal}',
+    'events.tourTitle': 'Tournament',
+    'events.tourSub': 'Wed/Sat 24h · ghost bracket · league {league} · {status}',
+    'events.tourEnter': 'Enter (best Restricted)',
+    'events.tourEntered': 'Entered ✓',
+    'events.tourResult': '🏁 Bracket: top {pct}% — +{prisms}△',
+
+    /* ---------- SETTINGS ---------- */
+    'settings.themeTitle': 'Theme',
+    'settings.themeSub': 'Aurora Veil is the authored default',
+    'settings.qualityTitle': 'Quality',
+    'settings.qAuto': 'auto',
+    'settings.qHigh': 'high',
+    'settings.qMed': 'med',
+    'settings.qLow': 'low',
+    'settings.numbersTitle': 'Numbers',
+    'settings.numLetters': 'letters',
+    'settings.numSci': 'sci',
+    'settings.reduceMotionTitle': 'Reduce motion',
+    'settings.reduceMotionSub': 'disables shake/slow-mo/pulses',
+    'settings.stackTitle': 'Merge confirm',
+    'settings.stackSub': 'dropping a same-type tower onto another (stacks to 5)',
+    'settings.stackAsk': 'Ask + toggle',
+    'settings.stackConfirm': 'Just confirm',
+    'settings.stackAuto': 'Auto',
+    'settings.accountTitle': 'Account',
+    'settings.accountSub': 'Guest (default) · link = local profile tag, never blocks (LOCKED #7)',
+    'settings.providerApple': 'Apple',
+    'settings.providerGoogle': 'Google',
+    'settings.providerEmail': 'Email',
+    'settings.linked': 'Linked {provider} (local profile)',
+    'settings.saveTitle': 'Save',
+    'settings.saveNow': 'Save now',
+    'settings.saved': 'Saved',
+    'settings.export': 'Export',
+    'settings.exportTitle': 'Save export',
+    'settings.import': 'Import',
+    'settings.importTitle': 'Paste save export',
+    'settings.importGo': 'Import',
+    'settings.importBad': 'Invalid save',
+    'settings.wipe': 'Wipe',
+    'settings.wipeTitle': 'Wipe save?',
+    'settings.wipeBody': 'This deletes ALL progress on this device. Export first if unsure.',
+    'settings.wipeConfirm': 'WIPE EVERYTHING',
+    'settings.wipeKeep': 'Keep playing',
+    'settings.crashTitle': 'Crash Log',
+    'settings.crashSub': '{n} local entries · never sent anywhere',
+    'settings.crashExportTitle': 'Crash log export',
+    'settings.crashClear': 'Clear',
+
+    /* ---------- SOCIAL (local-sim guild / duo / board / gifts / replays) ---------- */
+    'social.guildTitle': 'Guild — {name}',
+    'social.guildSub': 'this week: you {kills} kills · weekly chest at #1',
+    'social.guildRank': 'you: #{rank}',
+    'social.memberPts': '{score} pts',
+    'social.topContributor': '👑 Top contributor this week!',
+    'social.duoTitle': 'Duo co-op',
+    'social.duoSub': 'shared boss-HP raids (local-sim) — win pays +75 ▣ · odds scale with your real best round',
+    'social.duoBtn': 'Run duo raid',
+    'social.duoWin': '⚔ Raid cleared with {ally}! +{prisms}△ +75▣',
+    'social.duoLose': 'So close — {ally} says gg',
+    'social.credBal': '▣ <b>{n}</b> Guild Credits',
+    'social.donateTitle': 'Daily donation',
+    'social.donateSub': 'pitch in — +20 ▣ once a day',
+    'social.doneToday': ' · DONE today',
+    'social.donateBtn': 'Donate +20▣',
+    'social.donateGot': '+20 Guild Credits',
+    'social.weeklySub': 'weekly mission chest — +200 ▣',
+    'social.weeklyBtn': 'Claim +200▣',
+    'social.weeklyGot': '+200 Guild Credits — weekly mission',
+    'social.heroThorne': 'Thorne Duskmantle — guild hero',
+    'social.heroLyra': 'Lyra Meadowlight — guild hero',
+    'social.heroSub': 'guild-exclusive roster unlock',
+    'social.needCreds': 'Need Guild Credits',
+    'social.techMana': 'Guild tech: Mana yield',
+    'social.techManaSub': '+5% Mana/level',
+    'social.techOff': 'Guild tech: Night watch',
+    'social.techOffSub': '+30min offline cap/level',
+    'social.techCap': ' — capped account buff, never combat power',
+    'social.draughtTitle': 'Banner Draught',
+    'social.draughtSub': 'next run +10% damage (consumable)',
+    'social.draughtGo': 'Banner Draught queued — next run +10% damage',
+    'social.friendsTitle': 'Friends ({n})',
+    'social.friendsSub': 'gifts sent today: {sent}/5 (+5△ back each)',
+    'social.addFriend': 'Add friend',
+    'social.sendGift': 'Send gift',
+    'social.giftSent': '🎁 sent — +5△ returned',
+    'social.giftCap': 'Daily gift cap reached',
+    'social.replaysTitle': 'Replays',
+    'social.replaysSub': "watch a ghost's run summary · rated {n}",
+    'social.replayWatch': 'Watch + rate',
+    'social.replayTitle': 'Replay — {name}',
+    'social.replayTier': 'Tier',
+    'social.replayReached': 'Reached',
+    'social.replayBuild': 'Build',
+    'social.replayRate': '👍 Rate',
+    'social.boardTitle': 'Leaderboard (ghosts)',
+    'social.you': ' — YOU',
+    'social.buildPyre': 'Pyre-heavy splash',
+    'social.buildFrost': 'Frost shatter combo',
+    'social.buildVoid': 'Void execute stack',
+    'social.buildStorm': 'Storm chain lattice',
+    'social.buildGrove': 'Grove regen wall'
+  };
+
+  /* Locale registry. Adding a language = drop another map here + set G.t.locale. */
+  const LOCALES = {en};
+
+  const RE = /\{(\w+)\}/g;
+  const fill = (s, p) => p ? s.replace(RE, (m, k) => (p[k] != null ? p[k] : m)) : s;
+
+  const t = (key, p) => {
+    const tbl = LOCALES[t.locale] || en;
+    const s = (tbl[key] != null ? tbl[key] : en[key]);
+    if (s == null) return G.dev ? '⟦' + key + '⟧' : key;   // dev surfaces missing keys loudly
+    return fill(s, p);
+  };
+  t.locale = 'en';
+  t.has = key => en[key] != null;
+  t.add = (loc, map) => { LOCALES[loc] = Object.assign(LOCALES[loc] || {}, map); };
+
+  /* ---- tooltip glossary (DESIGN-NEEDS-V2 §2) — canonical effect keys + currencies + HUD chips.
+     <b> = tooltip title line (tipbox styles it as the header). ---- */
+  Object.assign(en, {
+    'tip.key.d': '<b>Damage</b>Hits harder.',
+    'tip.key.rt': '<b>Attack rate</b>Fires faster.',
+    'tip.key.rg': '<b>Range</b>Reaches further.',
+    'tip.key.projS': '<b>Projectile speed</b>Bolts travel faster.',
+    'tip.key.crit': '<b>Critical hits</b>Chance to strike for bonus damage.',
+    'tip.key.pierce': '<b>Pierce</b>Shots pass through extra enemies.',
+    'tip.key.multi': '<b>Multishot</b>Fires extra projectiles.',
+    'tip.key.ramp': '<b>Ramp</b>Damage builds the longer it fires.',
+    'tip.key.burn': '<b>Burn</b>Ignites — damage over time.',
+    'tip.key.poison': '<b>Poison</b>Toxic damage over time; blocks regen.',
+    'tip.key.bleed': '<b>Bleed</b>Physical damage over time.',
+    'tip.key.freeze': '<b>Freeze</b>Chance to encase enemies solid.',
+    'tip.key.slow': '<b>Slow</b>Enemies crawl.',
+    'tip.key.stun': '<b>Stun</b>Briefly stops enemies cold.',
+    'tip.key.shred': '<b>Armor shred</b>Stacks — shredded enemies take more damage.',
+    'tip.key.curse': '<b>Curse</b>Cursed enemies take amplified damage.',
+    'tip.key.mark': '<b>Mark</b>Marked enemies take amplified damage.',
+    'tip.key.chain': '<b>Chain</b>Hits jump to nearby enemies.',
+    'tip.key.splash': '<b>Splash</b>Area damage around the hit.',
+    'tip.key.spreadOnDeath': '<b>Spread</b>The status jumps onward when the host dies.',
+    'tip.key.armorIg': '<b>Armor ignore</b>Punches through plating.',
+    'tip.key.shieldMul': '<b>Shieldbreaker</b>Bonus damage to shields.',
+    'tip.key.vsBoss': '<b>Giant-slayer</b>Bonus damage to bosses.',
+    'tip.key.vsStatus': '<b>Amplifier</b>Bonus damage to afflicted enemies.',
+    'tip.key.maxhp': '<b>Rend</b>Damage scales off max HP.',
+    'tip.key.exec': '<b>Execute</b>Finishes low-HP enemies instantly.',
+    'tip.key.zone': '<b>Zone</b>A persistent field around the tower.',
+    'tip.key.aura': '<b>Aura</b>Buffs towers in radius.',
+    'tip.key.income': '<b>Income</b>Earns extra Essence.',
+    'tip.key.refund': '<b>Refund</b>Returns Essence back to you.',
+    'tip.key.bank': '<b>Bank</b>Stores value now, pays out bigger later.',
+    'tip.key.sum': '<b>Summon</b>Fights with minions.',
+    'tip.key.nova': '<b>Nova</b>Periodic burst around the tower.',
+    'tip.key.beam': '<b>Beam</b>Continuous ray — no travel time.',
+    'tip.key.ground': '<b>Ground pool</b>Damaging ground at the impact point.',
+    'tip.key.pull': '<b>Pull</b>Drags enemies backward.',
+    'tip.key.knock': '<b>Knockback</b>Shoves enemies back down the path.',
+    'tip.key.detect': '<b>True sight</b>Reveals camo; sharper targeting.',
+    'tip.key.spire': '<b>Spire ward</b>Protects and heals the Spire.',
+    'tip.key.wall': '<b>Wall</b>Blocks and reroutes the lane.',
+    'tip.key.fear': '<b>Fear</b>Enemies flee backward.',
+    'tip.key.possess': '<b>Possess</b>Turns an enemy to your side.',
+    'tip.key.rewind': '<b>Rewind</b>Sends enemies back along the path.',
+    'tip.key.mirrorSpire': '<b>Mirror</b>Echoes the Spire’s own shots.',
+    'tip.key.allElem': '<b>Prismatic</b>Counts as every element at once.',
+    'tip.key.buffRandom': '<b>Chaos</b>Random powerful procs.',
+    'tip.key.reflect': '<b>Reflect</b>Returns damage to attackers.',
+    'tip.key.silence': '<b>Silence</b>Strips enemy abilities and buffs.',
+    'tip.key.guard': '<b>Guard</b>Sustains and repairs your defenses.',
+    'tip.key.echo': '<b>Echo</b>Empowers and recycles ultimates.',
+    'tip.cur.essence': '<b>Essence ◆</b>In-run currency — placing and upgrading. Resets each run.',
+    'tip.cur.mana': '<b>Mana ✦</b>Permanent currency — foundry and ratchet upgrades.',
+    'tip.cur.prism': '<b>Prisms △</b>Premium currency. Cosmetics and time only — never power. Fully earnable.',
+    'tip.cur.ucore': '<b>Ultimate Cores ⬢</b>Upgrade your ultimates.',
+    'tip.cur.guild': '<b>Guild Credits</b>Guild shop currency.',
+    'tip.cur.event': '<b>Event Tokens ⬡</b>Earned in live events — leftovers convert to Mana ×2.',
+    'tip.cur.astral': '<b>Astral Shards ✧</b>Prestige currency.',
+    'tip.fam': '<b>Familiar</b>A passive aura companion — levels up as you play.',
+    'tip.ward': '<b>Ward ✳</b>Regenerating shield — absorbs hits before Spire HP.',
+    'tip.hero': '<b>Hero</b>Auto-levels in-run with ability spikes at set levels.',
+    'tip.combo': '<b>Combo</b>Kill streaks build a payout multiplier — leaks reset it.',
+    'tip.wave': '<b>Waves</b>Endless — a boss every 10 waves, the tier boss at 50/100. Push your best.',
+    'tip.mode': '<b>Pace</b>Idle plays itself · Balanced auto-picks boons after 10s · Active is all yours. AFK is never punished.',
+    'tip.hudIncome': '<b>Income /s</b>Essence flowing in per second — towers, banks and boons.',
+    'tip.raid': '<b>Tier Raid ⚔</b>Opens after R100 on all three maps. Fell the signature boss to advance the tier — retreating banks (waves survived)·3.',
+    'tip.retire': '<b>Retire 🏳</b>Bank your Mana and end the run on your terms. In a raid: retreat — the boss keeps the tier.',
+    'tip.ultAuto': '<b>Auto-cast</b>AUTO fires on cooldown (AFK-safe) · MANUAL saves it for your timing. Idle mode auto-fires everything.'
+  });
+  G.STRINGS = en;   // direct table access for tooling / tests
+  G.t = t;
+})();
+
 /* ==== src/09-ui.js ==== */
 /* SPIREBOUND ui — HUD, build tray, tab router, sheets, ult bar, modals, theme gate, tutorial,
    mode/speed controls, perk prompt, arena tap. Markup emits the 00-head design-system vocabulary
@@ -5013,7 +5860,6 @@ const h = (tag, cls, html) => { const el = document.createElement(tag); if (cls)
   if (html != null) el.innerHTML = html; return el; };
 const fmt = a => G.fmt(a);
 const EG = {fire: '▲', ice: '❄', storm: '⚡', nature: '●', void: '◆', arcane: '✦', phys: '⬟'}; // colorblind element glyphs
-const ROLE = {A: 'ECONOMY', B: 'SKILL', C: 'GAUNTLET'};
 G.ui = {tab: 'spire', sel: null, speed: 1, typeOpen: null};
 /* ================= toasts + modals ================= */
 G.ui.toast = (msg, cls) => { const t = h('div', 'toast ' + (cls || ''), msg); $('#toasts').appendChild(t);
@@ -5022,21 +5868,21 @@ G.ui.modal = (title, bodyEl, acts) => { const m = $('#modals'); m.innerHTML = ''
   const card = h('div', 'modal'); card.appendChild(h('h2', null, title));
   const b = h('div', 'mbody'); if (typeof bodyEl === 'string') b.innerHTML = bodyEl; else if (bodyEl) b.appendChild(bodyEl);
   card.appendChild(b); const row = h('div', 'macts');
-  (acts || [{nm: 'Close'}]).forEach(a => { const btn = h('button', 'btn ' + (a.cls || ''), a.nm);
+  (acts || [{nm: G.t('common.close')}]).forEach(a => { const btn = h('button', 'btn ' + (a.cls || ''), a.nm);
     btn.onclick = () => { m.classList.remove('on'); m.innerHTML = ''; if (a.fn) a.fn(); }; row.appendChild(btn); });
   card.appendChild(row); m.appendChild(card); return card; };
 /* ================= theme gate (LOCKED #8 — first-launch threshold; Aurora Veil = authored default) */
 G.ui.themeGate = done => { const g = $('#themeGate'); if (G.S.opt.themePicked) { g.classList.remove('on'); return done(); }
   g.classList.add('on'); g.innerHTML = '';
   const wrap = h('div', 'gate-card');
-  wrap.appendChild(h('div', 'gate-brand', 'SPIREBOUND'));
-  wrap.appendChild(h('div', 'gate-story', 'The Long Night has come. The Spire is the last light — hold it.'));
-  wrap.appendChild(h('div', 'gate-title', 'Choose your night'));
+  wrap.appendChild(h('div', 'gate-brand', G.t('gate.brand')));
+  wrap.appendChild(h('div', 'gate-story', G.t('gate.story')));
+  wrap.appendChild(h('div', 'gate-title', G.t('gate.title')));
   Object.entries(G.C.themes).forEach(([id, th]) => { const c = h('button', 'theme-pick t-' + id + (id === 'aurora' ? ' def' : ''),
       `<b>${th.name}</b><span>${th.desc || ''}</span>`);
     c.onclick = () => { G.S.opt.theme = id; G.S.opt.themePicked = 1; G.applyTheme(); g.classList.remove('on'); done(); };
     wrap.appendChild(c); });
-  wrap.appendChild(h('div', 'gate-note', 'Change anytime in Settings.')); g.appendChild(wrap); };
+  wrap.appendChild(h('div', 'gate-note', G.t('gate.note'))); g.appendChild(wrap); };
 G.applyTheme = () => { const th = G.theme(), rt = document.documentElement;
   rt.dataset.theme = (G.S && G.S.opt.theme) || 'aurora';
   let acc = th.acc, acc2 = th.acc2;
@@ -5058,6 +5904,27 @@ const icoImg = G.ui.icoImg = (kind, id, px, o) => { o = o || {}; const k = kind 
   return CURICO[k]; };
 const curIco = G.ui.curIco = (id, px) => icoImg('cur', id, px || 15);
 G.ui.curIcoFlush = () => { for (const k in CURICO) delete CURICO[k]; };
+/* ================= tooltip engine (DESIGN-NEEDS-V2 §2) — hover + long-press, one floating plate.
+   data-tipk="<glossary key>" → G.t('tip.'+key) · data-tipr="<id>" → registered dynamic html. */
+const TIPR = {}; let tipN = 0, tipHoldT = 0, tipHideT = 0;
+G.ui.tipReg = html => { if (tipN > 4000) { for (const k in TIPR) delete TIPR[k]; tipN = 0; }
+  const k = 't' + (++tipN); TIPR[k] = html; return k; };
+const tipEl = h('div'); tipEl.id = 'tipbox'; document.body.appendChild(tipEl);
+const tipHtml = el => el.dataset.tipk ? (G.t && G.t.has('tip.' + el.dataset.tipk) ? G.t('tip.' + el.dataset.tipk) : '') : TIPR[el.dataset.tipr] || '';
+const tipShow = el => { const html = tipHtml(el); if (!html) return;
+  tipEl.innerHTML = html; tipEl.classList.add('on');
+  const r = el.getBoundingClientRect(), tw = tipEl.offsetWidth, th2 = tipEl.offsetHeight;
+  const x = Math.max(6, Math.min(innerWidth - tw - 6, r.left + r.width / 2 - tw / 2));
+  const up = r.top - th2 - 8;
+  tipEl.style.left = x + 'px'; tipEl.style.top = (up < 6 ? r.bottom + 8 : up) + 'px'; };
+const tipHide = G.ui.tipHide = () => { clearTimeout(tipHoldT); tipEl.classList.remove('on'); };
+document.addEventListener('pointerover', e => { if (e.pointerType !== 'mouse') return;
+  const el = e.target.closest && e.target.closest('[data-tipk],[data-tipr]'); el ? tipShow(el) : tipHide(); });
+document.addEventListener('pointerdown', e => { const el = e.target.closest && e.target.closest('[data-tipk],[data-tipr]');
+  if (!el || e.pointerType === 'mouse') return; clearTimeout(tipHoldT); clearTimeout(tipHideT);
+  tipHoldT = setTimeout(() => { tipShow(el); tipHideT = setTimeout(tipHide, 2600); }, 350); }, {passive: true});
+document.addEventListener('pointerup', () => clearTimeout(tipHoldT), true);
+document.addEventListener('scroll', tipHide, true);
 /* ================= HUD (FINAL Aurora structure) ================= */
 G.ui.renderHud = () => { const R = G.R, S = G.S, el = $('#hud'); if (!R) return;
   const md = G.D.modes[R.mode], ti = D().tiers[R.tier - 1], mp = ti.maps[R.mapIdx];
@@ -5070,50 +5937,54 @@ G.ui.renderHud = () => { const R = G.R, S = G.S, el = $('#hud'); if (!R) return;
   const wdR = Math.max(0, Math.min(1, BN.ratio(R.spire.ward, R.spire.wardMax)));
   el.innerHTML =
    `<div class="hudrow">
-      <span class="chip cur"><span class="ico">${curIco('essence')}</span><b class="val num">${fmt(R.essence)}</b><span class="lbl">ESSENCE</span></span>
-      <span class="chip cur"><span class="ico">${curIco('mana')}</span><b class="val num">${fmt(S.mana)}</b><span class="lbl">MANA</span></span>
+      <span class="chip cur" data-tipk="cur.essence"><span class="ico">${curIco('essence')}</span><b class="val num">${fmt(R.essence)}</b><span class="lbl">${G.t('hud.essence')}</span></span>
+      <span class="chip cur" data-tipk="cur.mana"><span class="ico">${curIco('mana')}</span><b class="val num">${fmt(S.mana)}</b><span class="lbl">${G.t('hud.mana')}</span></span>
       <span class="sp"></span>
-      ${R.raid ? `<span class="wavepill raid"><span class="wl">⚔ RAID</span><b class="num">W${Math.max(1, R.round - 109)}</b><em class="bmark now">${bossNow ? 'BOSS' : 'CLEAR!'}</em></span>`
-        : `<span class="wavepill"><span class="wl">WAVE</span><b class="num">${R.round}</b><em class="bmark${bossNow ? ' now' : ''}">${bossNow ? 'BOSS' : 'BOSS ' + nextBoss + ' ›'}</em></span>`}
+      ${R.raid ? `<span class="wavepill raid" data-tipk="raid"><span class="wl">${G.t('hud.raid')}</span><b class="num">W${Math.max(1, R.round - 109)}</b><em class="bmark now">${bossNow ? G.t('hud.boss') : G.t('hud.raidClear')}</em></span>`
+        : `<span class="wavepill" data-tipk="wave"><span class="wl">${G.t('hud.wave')}</span><b class="num">${R.round}</b><em class="bmark${bossNow ? ' now' : ''}">${bossNow ? G.t('hud.boss') : G.t('hud.bossNext', {n: nextBoss})}</em></span>`}
     </div>
     <div id="hpwrap">
-      <div class="barline"><span class="bl">◆ SPIRE</span><span class="bar hp"><i style="transform:scaleX(${hpR})"></i></span><b class="bv num">${fmt(R.spire.hp)}/${fmt(R.spire.hpMax)}</b></div>
-      <div class="barline"><span class="bl">✳ WARD</span><span class="bar ward"><i style="transform:scaleX(${wdR})"></i></span><b class="bv num">${fmt(R.spire.ward)}/${fmt(R.spire.wardMax)}</b></div>
+      <div class="barline"><span class="bl">◆ ${G.t('hud.spire')}</span><span class="bar hp"><i style="transform:scaleX(${hpR})"></i></span><b class="bv num">${fmt(R.spire.hp)}/${fmt(R.spire.hpMax)}</b></div>
+      <div class="barline" data-tipk="ward"><span class="bl">✳ ${G.t('hud.ward')}</span><span class="bar ward"><i style="transform:scaleX(${wdR})"></i></span><b class="bv num">${fmt(R.spire.ward)}/${fmt(R.spire.wardMax)}</b></div>
     </div>
     <div class="hudrow r3">
       ${evLive ? `<span class="chip evt"><span class="ico">${curIco('event')}</span>${evLive.nm.toUpperCase()}</span>` : ''}
-      <span class="chip">COMBO <b class="val num">×${(BN.toNum(R.combo)).toFixed(2)}</b></span>
-      <span class="chip"><b class="val num">${fmt(R.income)}</b>/s</span>
-      <button class="chip mode" id="modeBtn">${md.emoji} ${md.nm} ~${md.mult}×</button>
+      <span class="chip" data-tipk="combo">${G.t('hud.combo')} <b class="val num">×${(BN.toNum(R.combo)).toFixed(2)}</b></span>
+      <span class="chip" data-tipk="hudIncome">${G.t('hud.income', {v: `<b class="val num">${fmt(R.income)}</b>`})}</span>
+      <button class="chip mode" id="modeBtn" data-tipk="mode">${G.t('hud.mode', {emoji: md.emoji, name: G.t('mode.' + R.mode), mult: md.mult})}</button>
       <span class="sp"></span>
-      ${hd ? `<button class="famchip hero" id="heroChip"><span class="fico">${hd.emoji}</span><span class="ft"><b>${hd.nm.split(' ')[0].toUpperCase()}</b><em class="num">LV ${R.hero.lvl} ${hPips}</em></span></button>` : ''}
-      <button class="famchip" id="famChip"><span class="fico">${(G.cosFx && G.cosFx().famIco) || (fam && fam.emoji) || '◉'}</span><span class="ft"><b>${fam ? fam.nm.toUpperCase() : '—'}</b><em>LV ${fl ? fl.lvl : 1}${fl && fl.awaken ? ' ★' + fl.awaken : ''}</em></span></button>
+      ${hd ? `<button class="famchip hero" id="heroChip" data-tipk="hero"><span class="fico">${hd.emoji}</span><span class="ft"><b>${hd.nm.split(' ')[0].toUpperCase()}</b><em class="num">${G.t('hud.famLevel', {n: R.hero.lvl})} ${hPips}</em></span></button>` : ''}
+      <button class="famchip" id="famChip" data-tipk="fam"><span class="fico">${(G.cosFx && G.cosFx().famIco) || (fam && fam.emoji) || '◉'}</span><span class="ft"><b>${fam ? fam.nm.toUpperCase() : G.t('hud.famNone')}</b><em>${fl && fl.awaken ? G.t('hud.famLevelAwaken', {n: fl.lvl, star: fl.awaken}) : G.t('hud.famLevel', {n: fl ? fl.lvl : 1})}</em></span></button>
     </div>
     <div class="ctxstrip">
-      <span class="ctx">◆ T${R.tier} · ${ti.nm.toUpperCase()} — ${R.raid ? `⚔ RAID · ${(ti.bossNm || 'SIGNATURE BOSS').toUpperCase()} <em class="arch">ON MAP ${mp.slot}</em>` : `MAP ${mp.slot} · ${mp.nm.toUpperCase()} <em class="arch">${(mp.arch || '').toUpperCase()}${ROLE[mp.slot] ? ' · ' + ROLE[mp.slot] : ''}</em>`}</span>
+      <span class="ctx">${R.raid ? G.t('hud.ctxRaid', {tier: R.tier, tierName: ti.nm.toUpperCase(), boss: (ti.bossNm || G.t('maps.raidFallback')).toUpperCase(), slot: mp.slot})
+        : G.t('hud.ctx', {tier: R.tier, tierName: ti.nm.toUpperCase(), slot: mp.slot, mapName: mp.nm.toUpperCase(), arch: (mp.arch || '').toUpperCase() + (G.t.has('role.' + mp.slot) ? ' · ' + G.t('role.' + mp.slot) : '')})}</span>
       <span class="sp"></span>
-      ${R.round >= 2 && !R.over ? '<button class="chip retire" id="retireBtn">🏳 RETIRE</button>' : ''}
-      <span class="speedpills">${[1, 2, 4, 6].map(s => `<button class="spd num${G.ui.speed === s ? ' on' : ''}" data-s="${s}">${s}×</button>`).join('')}</span>
+      ${R.round >= 2 && !R.over ? `<button class="chip retire" id="retireBtn" data-tipk="retire">${G.t('hud.retire')}</button>` : ''}
+      <span class="speedpills">${[1, 2, 4, 6].map(s => `<button class="spd num${G.ui.speed === s ? ' on' : ''}" data-s="${s}">${G.t('hud.speed', {n: s})}</button>`).join('')}</span>
     </div>`;
   $('#modeBtn').onclick = () => { const order = ['idle', 'balanced', 'active'];
-    R.mode = order[(order.indexOf(R.mode) + 1) % 3]; S.opt.mode = R.mode; G.ui.toast(G.D.modes[R.mode].emoji + ' ' + G.D.modes[R.mode].nm); G.ui.renderHud(); };
+    R.mode = order[(order.indexOf(R.mode) + 1) % 3]; S.opt.mode = R.mode; G.ui.toast(G.D.modes[R.mode].emoji + ' ' + G.t('mode.' + R.mode)); G.ui.renderHud(); };
   el.querySelectorAll('.spd').forEach(b => b.onclick = () => { G.ui.speed = +b.dataset.s; G.ui.renderHud(); });
   $('#famChip').onclick = () => { G.ui.tab = 'more'; G.ui.renderTabs(); G.ui.openSheet('familiars'); };
   const hc = $('#heroChip'); if (hc) hc.onclick = () => { G.ui.tab = 'more'; G.ui.renderTabs(); G.ui.openSheet('heroes'); };
   const rb = $('#retireBtn'); if (rb) rb.onclick = () => {               // endless-push RETIRE (DESIGN-FINAL-RUN 6): bank on your terms
     const payR = R.raid ? Math.max(1, (R.round - 109) * 3) : R.round;    // raid retreat pays waves-survived (mirrors 07-sim endRun)
     const manaN = Math.max(1, Math.floor(Math.pow(payR, 1.15) * (1 + R.kills / 500) * R.mods.manaGain));
-    G.ui.modal(R.raid ? 'Retreat from the raid?' : 'Retire & bank?', `<div class="wa-row"><span>${R.raid ? `Fall back at raid wave ${Math.max(1, R.round - 109)} — the boss keeps the tier` : `End the run at wave ${R.round} on your terms`}</span><b class="num">✦ ~${fmt(BN.from(manaN))} Mana</b></div>`,
-      [{nm: R.raid ? 'RETREAT & BANK' : 'RETIRE & BANK', cls: 'buy', fn: () => G.sim.endRun(R, 'retire')}, {nm: 'Keep fighting'}]); };
+    G.ui.modal(G.t(R.raid ? 'retire.titleRaid' : 'retire.title'), `<div class="wa-row"><span>${R.raid ? G.t('retire.bodyRaid', {n: Math.max(1, R.round - 109)}) : G.t('retire.body', {n: R.round})}</span><b class="num">${G.t('retire.mana', {v: fmt(BN.from(manaN))})}</b></div>`,
+      [{nm: G.t(R.raid ? 'retire.goRaid' : 'retire.go'), cls: 'buy', fn: () => G.sim.endRun(R, 'retire')}, {nm: G.t('retire.stay')}]); };
   const bb = $('#bossbar'), b = R.boss;
   if (b && b.alive) { bb.classList.add('on');
-    bb.querySelector('.bname').textContent = (b.mod ? b.mod.nm + ' · ' : '') + (R.round % 50 === 0 ? 'TIER BOSS — ' : 'BOSS — ') + b.d.nm;
+    const hb = el.getBoundingClientRect().bottom;                        // yield to the REAL HUD height (Nova gap #1: fixed 128px sat under the ctxstrip at 390w)
+    bb.style.top = Math.max(hb + 6, 96) + 'px';
+    const btag = G.t(R.round % 50 === 0 ? 'boss.tierTag' : 'boss.tag', {name: b.d.nm});
+    bb.querySelector('.bname').textContent = b.mod ? G.t('boss.modTag', {mod: b.mod.nm, rest: btag}) : btag;
     const bi = bb.querySelector('.bar>i'); if (bi) bi.style.transform = 'scaleX(' + Math.max(0, Math.min(1, BN.ratio(b.hp, b.maxhp))) + ')';
     const bt = bb.querySelector('.bar>b'); if (bt) bt.textContent = fmt(b.hp); }
   else bb.classList.remove('on');
 };
 /* ================= build tray — per-TYPE bottom buttons (META-DESIGN LOCKED: the type's upgrade home) */
-G.ui.placeFailMsg = R => R.towers.length >= (R.slotMax || 5) ? `All ${R.slotMax || 5} slots used — merge stacks or buy a slot` : 'Not enough Essence';
+G.ui.placeFailMsg = R => R.towers.length >= (R.slotMax || 5) ? G.t('tray.slotsFull', {n: R.slotMax || 5}) : G.t('tray.needEssence');
 G.ui.renderTray = () => { const R = G.R, tray = $('#tray'); if (!R) return; tray.innerHTML = '';
   const open = $('#sheet').classList.contains('on');
   tray.appendChild(h('div', 'slotchip num', `⬒ ${R.towers.length}/${R.slotMax || 5}`)); // TOWER SLOTS: instances used (a stack = 1 slot)
@@ -5125,17 +5996,17 @@ G.ui.renderTray = () => { const R = G.R, tray = $('#tray'); if (!R) return; tray
       icoImg('tower', tw.id, 30, {el: tw.el, evo: ch}) + `<b class="tct num">×${n}</b>`);
     c.dataset.cost = tw.cost; c.title = tw.nm + ' — ◆ ' + tw.cost;
     c.onclick = () => G.ui.openTypePanel(tw.id);
-    c.ondblclick = () => { G.sim.autoPlace(R, tw.id) ? G.ui.toast(tw.nm + ' placed') : G.ui.toast(G.ui.placeFailMsg(R), 'warn'); G.ui.renderTray(); };
+    c.ondblclick = () => { G.sim.autoPlace(R, tw.id) ? G.ui.toast(G.t('tray.placed', {name: tw.nm})) : G.ui.toast(G.ui.placeFailMsg(R), 'warn'); G.ui.renderTray(); };
     tray.appendChild(c); });
   const sp = h('button', 'tbtn spire' + (open && G.ui.tab === 'spire' && !G.ui.typeOpen ? ' sel' : ''),
-    icoImg('spire', 'spire', 30) + '<b class="tct">SPIRE</b>');
-  sp.title = 'The Spire — freeform paths';
+    icoImg('spire', 'spire', 30) + `<b class="tct">${G.t('hud.spire')}</b>`);
+  sp.title = G.t('tray.spireTip');
   sp.onclick = () => { G.ui.tab = 'spire'; G.ui.renderTabs(); G.ui.openSheet('spire'); };
   tray.appendChild(sp);
   const sc = G.sim.slotCost(G.S);                                        // buy-slot affordance (META-DESIGN: permanent, one at a time)
-  if (sc && !R.restricted) { const bs = h('button', 'tbtn buyslot', `<b class="bsl">+SLOT</b><b class="tct num">✦${fmt(sc)}</b>`);
-    bs.title = 'Permanent tower slot — ✦ ' + fmt(sc) + ' Mana';
-    bs.onclick = () => { G.sim.buySlot(G.S, R) ? G.ui.toast(`Slot unlocked — ${R.slotMax}/15 (permanent)`) : G.ui.toast('Need Mana', 'warn'); G.ui.renderTray(); };
+  if (sc && !R.restricted) { const bs = h('button', 'tbtn buyslot', `<b class="bsl">${G.t('tray.buySlot')}</b><b class="tct num">✦${fmt(sc)}</b>`);
+    bs.title = G.t('tray.buySlotTip', {v: fmt(sc)});
+    bs.onclick = () => { G.sim.buySlot(G.S, R) ? G.ui.toast(G.t('tray.slotUnlocked', {n: R.slotMax})) : G.ui.toast(G.t('common.needMana'), 'warn'); G.ui.renderTray(); };
     tray.appendChild(bs); }
 };
 G.ui.tapArena = w => { const R = G.R; if (!R) return;
@@ -5143,7 +6014,7 @@ G.ui.tapArena = w => { const R = G.R; if (!R) return;
       tgt = R.towers.find(t => t.tw.id === twId && Math.hypot(t.x - w.x, t.y - w.y) <= 24); // drop ONTO same type = merge (META-DESIGN LOCKED)
     if (tgt) return G.ui.stackFlow(R, twId, tgt);
     const t = G.sim.place(R, twId, w.x, w.y);
-    G.ui.toast(t ? 'Placed' : G.ui.placeFailMsg(R), t ? '' : 'warn');
+    G.ui.toast(t ? G.t('arena.placed') : G.ui.placeFailMsg(R), t ? '' : 'warn');
     G.ui.placing = null; $('#placeHint').classList.remove('on'); G.ui.renderTray(); return; }
   let best = null, bd = 40; R.towers.forEach(t => { const d = Math.hypot(t.x - w.x, t.y - w.y); if (d < bd) { bd = d; best = t; } });
   if (best) { G.render.sel = G.ui.sel = best; return G.ui.openTypePanel(best.tw.id, best); }
@@ -5152,28 +6023,29 @@ G.ui.tapArena = w => { const R = G.R; if (!R) return;
 /* ---- drop-over merge flow (META-DESIGN LOCKED: max 5 · confirm dialog w/ "always ask" · Settings 3-way) */
 G.ui.stackFlow = (R, twId, tgt) => {
   G.ui.placing = null; $('#placeHint').classList.remove('on'); G.ui.renderTray();
-  if ((tgt.st || 1) >= 5) return G.ui.toast('Max stack (5/5)', 'warn');
+  if ((tgt.st || 1) >= 5) return G.ui.toast(G.t('stack.max'), 'warn');
   const tw = tgt.tw, doIt = () => { const ok = G.sim.stack(R, twId, tgt);
-    G.ui.toast(ok ? `Merged — ${tw.nm} stack ${tgt.st}/5` : 'Not enough Essence', ok ? '' : 'warn'); G.ui.renderTray(); };
+    G.ui.toast(ok ? G.t('stack.merged', {name: tw.nm, n: tgt.st}) : G.t('tray.needEssence'), ok ? '' : 'warn'); G.ui.renderTray(); };
   const mode = (G.S.opt.stackConfirm || 'dialog');
   if (mode === 'auto') return doIt();
-  const body = h('div', null, `<div class="wa-row"><span>${tw.nm} — adds its impact + timing</span><b class="num">${tgt.st || 1}/5 → ${(tgt.st || 1) + 1}/5</b></div><div class="wa-row"><span>Cost</span><b class="num">◆ ${tw.cost}</b></div>`);
+  const body = h('div', null, `<div class="wa-row"><span>${G.t('stack.body', {name: tw.nm})}</span><b class="num">${tgt.st || 1}/5 → ${(tgt.st || 1) + 1}/5</b></div><div class="wa-row"><span>${G.t('stack.cost')}</span><b class="num">◆ ${tw.cost}</b></div>`);
   let ask = null;
-  if (mode === 'dialog') { ask = h('label', 'chk', '<input type="checkbox" checked> Always ask before merging'); body.appendChild(ask); }
-  G.ui.modal('Merge tower?', body, [{nm: 'Merge', cls: 'buy', fn: () => {
+  if (mode === 'dialog') { ask = h('label', 'chk', '<input type="checkbox" checked> ' + G.t('stack.ask')); body.appendChild(ask); }
+  G.ui.modal(G.t('stack.title'), body, [{nm: G.t('stack.go'), cls: 'buy', fn: () => {
     if (ask && !ask.querySelector('input').checked) G.S.opt.stackConfirm = 'auto'; // unticking = stop asking (re-enable in Settings)
-    doIt(); }}, {nm: 'Cancel'}]);
+    doIt(); }}, {nm: G.t('common.cancel')}]);
 };
 /* ================= ult bar (glyph + cooldown sweep + state — fits the 52px slot) ============ */
 G.ui.renderUlts = () => { const R = G.R, el = $('#ults'); if (!R) return; el.innerHTML = '';
   G.S.slotted.slice(0, D().ultUp.maxSlots).forEach(id => { const u = D().ults.find(u => u.id === id), st = R.ults[id]; // §6b: ~3 equipped
     const su = G.S.ults[id] = G.S.ults[id] || {lvl: 0, auto: 0};
     const ready = st.cd <= 0;
+    const ugly = G.art && G.art._path ? G.art._path.pathDom(u.fx) : 'nova';   // unique per-ult glyph from the vocabulary (sweep 1.5)
     const c = h('button', 'ult el-' + u.el + (ready ? ' ready' : ''),
-      `<span class="cd" style="--p:${ready ? 0 : (st.cd / u.cd) * 100}%"></span><b class="ug">${EG[u.el] || '✦'}</b><span class="cdt num">${ready ? 'READY' : G.fmtTime(st.cd)}</span>${su.auto ? '<i class="auto on">A</i>' : ''}`);
-    c.title = u.nm + ' — ' + (u.d || '');
+      `<span class="cd" style="--p:${ready ? 0 : (st.cd / u.cd) * 100}%"></span><b class="ug">${icoImg('glyph', ugly, 20, {col: (G.C.elem && G.C.elem[u.el]) || ''})}</b><span class="cdt num">${ready ? G.t('ult.ready') : G.fmtTime(st.cd)}</span>${su.auto ? '<i class="auto on">A</i>' : ''}`);
+    c.setAttribute('data-tipr', G.ui.tipReg(`<b>${u.nm}</b>${u.d || ''}<em>${G.t('ult.tipMeta', {el: u.el, cd: u.cd})}</em>`));
     c.onclick = () => { if (G.sim.castUlt(R, id)) G.ui.renderUlts(); };
-    c.oncontextmenu = e => { e.preventDefault(); su.auto = su.auto ? 0 : 1; G.ui.toast(u.nm + ' auto-cast ' + (su.auto ? 'ON' : 'OFF')); G.ui.renderUlts(); };
+    c.oncontextmenu = e => { e.preventDefault(); su.auto = su.auto ? 0 : 1; G.ui.toast(G.t(su.auto ? 'ult.autoOn' : 'ult.autoOff', {name: u.nm})); G.ui.renderUlts(); };
     el.appendChild(c); });
 };
 /* ================= run-end screens (DESIGN-NEEDS-V2 §5) — Defeat / Victory summary =========== */
@@ -5186,18 +6058,18 @@ G.ui.runEnd = p => { const R = p.R, S = G.S, died = R.over === 'death', cleared 
   re.className = (died ? 'death' : 'clear') + (R.raid ? ' raid' : '');
   re.innerHTML = `<div class="replate">
     <div class="respire">${G.ui.icoImg('spire', 'spire', 72, {})}</div>
-    <h1>${died ? (R.raid ? 'THE RAID HOLDS' : 'THE SPIRE HAS FALLEN') : raidWin ? '⚔ RAID CLEARED' : (cleared ? 'MAP CLEARED' : 'RUN COMPLETE')}</h1>
-    <p class="resub">${died ? (R.raid ? `${ti.bossNm} holds T${R.tier} — raid wave ${raidW}.` : `Wave ${R.round} — the ward broke on T${R.tier}.`)
-      : raidWin ? `${ti.bossNm} falls on ${R.map.nm}${tierUp ? ` — TIER ${R.tier + 1} UNLOCKED` : ' — signature replay'}.`
-      : `Wave ${R.round} — T${R.tier} ${cleared ? 'conquered' : 'banked'}.`}</p>
-    <div class="reward"><span class="ico">${curIco('mana', 16)}</span><b class="num">+${fmt(p.mana)}</b><span class="lbl">MANA</span>
-      ${p.newBest ? '<em class="best">NEW BEST</em>' : ''}${raidWin ? '<em class="gclear">⚔ RAID</em>' : cleared ? '<em class="gclear">CLEARED</em>' : ''}</div>
-    <div class="restats">${stat('Waves held', R.raid ? raidW : R.round)}${R.hero ? stat('Hero level', 'LV ' + R.hero.lvl) : ''}${stat('Kills', fmt(R.kills))}${stat('Boss kills', (R.stats.bossKills | 0))}${stat('Damage dealt', fmt(R.stats.dmg))}${stat('Overkills', (R.stats.overkills | 0))}</div>
-    <div class="rects"><button class="btn" id="reAgain">${died ? 'TRY AGAIN' : R.raid ? 'RAID AGAIN' : 'RUN AGAIN'}</button>${
-      raidWin && tierUp ? '<button class="btn pri" id="reNext">NEXT TIER</button>'
-      : raidReady && !died ? '<button class="btn pri" id="reRaid">⚔ ENTER THE RAID</button>'
-      : cleared ? '<button class="btn pri" id="reNext">NEXT MAP</button>'
-      : '<button class="btn" id="reBack">BACK TO SPIRE</button>'}</div>
+    <h1>${died ? G.t(R.raid ? 'run.raidHolds' : 'run.fallen') : raidWin ? G.t('run.raidCleared') : G.t(cleared ? 'run.cleared' : 'run.complete')}</h1>
+    <p class="resub">${died ? (R.raid ? G.t('run.subRaidDeath', {boss: ti.bossNm, tier: R.tier, n: raidW}) : G.t('run.subDeath', {n: R.round, tier: R.tier}))
+      : raidWin ? G.t('run.subRaidWin', {boss: ti.bossNm, map: R.map.nm, suffix: tierUp ? G.t('run.tierUnlocked', {n: R.tier + 1}) : G.t('run.sigReplay')})
+      : G.t('run.subWin', {n: R.round, tier: R.tier, state: G.t(cleared ? 'run.stateConquered' : 'run.stateBanked')})}</p>
+    <div class="reward"><span class="ico">${curIco('mana', 16)}</span><b class="num">+${fmt(p.mana)}</b><span class="lbl">${G.t('run.rewardMana')}</span>
+      ${p.newBest ? `<em class="best">${G.t('run.newBest')}</em>` : ''}${raidWin ? `<em class="gclear">${G.t('run.raidTag')}</em>` : cleared ? `<em class="gclear">${G.t('run.clearedTag')}</em>` : ''}</div>
+    <div class="restats">${stat(G.t('run.statWaves'), R.raid ? raidW : R.round)}${R.hero ? stat(G.t('run.statHeroLevel'), G.t('hud.famLevel', {n: R.hero.lvl})) : ''}${stat(G.t('run.statKills'), fmt(R.kills))}${stat(G.t('run.statBossKills'), (R.stats.bossKills | 0))}${stat(G.t('run.statDamage'), fmt(R.stats.dmg))}${stat(G.t('run.statOverkills'), (R.stats.overkills | 0))}</div>
+    <div class="rects"><button class="btn" id="reAgain">${died ? G.t('run.tryAgain') : G.t(R.raid ? 'run.raidAgain' : 'run.runAgain')}</button>${
+      raidWin && tierUp ? `<button class="btn pri" id="reNext">${G.t('run.nextTier')}</button>`
+      : raidReady && !died ? `<button class="btn pri" id="reRaid">${G.t('run.enterRaid')}</button>`
+      : cleared ? `<button class="btn pri" id="reNext">${G.t('run.nextMap')}</button>`
+      : `<button class="btn" id="reBack">${G.t('run.backToSpire')}</button>`}</div>
   </div>`;
   re.classList.add('on');
   $('#reAgain').onclick = () => { re.classList.remove('on'); G.main.newRun({tier: R.tier, mapIdx: R.mapIdx, raid: R.raid ? 1 : 0}); };
@@ -5215,22 +6087,22 @@ G.ui.renderTabs = () => { const el = $('#tabbar'); el.innerHTML = '';
   const cs = getComputedStyle(document.documentElement);                       // authored tab glyphs (DESIGN-SWEEP §1)
   const accC = (cs.getPropertyValue('--acc') || '').trim() || '#5FD6FF', inkC = (cs.getPropertyValue('--ink3') || '').trim() || '#5C6E8E';
   TABS.forEach(id => { const on = G.ui.tab === id; const b = h('button', 'tab' + (on ? ' on' : ''),
-      `<span class="ti">${icoImg('tab', id, 17, {col: on ? accC : inkC})}</span>${id[0].toUpperCase() + id.slice(1)}`);
+      `<span class="ti">${icoImg('tab', id, 17, {col: on ? accC : inkC})}</span>${G.t('tab.' + id)}`);
     b.onclick = () => { G.ui.tab = id; G.ui.renderTabs(); G.ui.openSheet(id); }; el.appendChild(b); }); };
 G.ui.openSheet = id => { const sh = $('#sheet'); sh.classList.add('on');
   G.ui.typeOpen = null; G.ui._panelAfford = null; resetSheetHead();
-  $('#sheetHead h2').textContent = id[0].toUpperCase() + id.slice(1);
+  $('#sheetHead h2').textContent = G.t.has('tab.' + id) ? G.t('tab.' + id) : G.t('sheet.' + id);
   $('#sheetHead .x').onclick = G.ui.closePanel;
   const b = $('#sheetBody'); b.innerHTML = ''; b.className = '';
   const build = G.ui.sheets[id]; if (build) build(b); G.ui.renderTray(); };
 G.ui.sheets = {
   spire(b) { const R = G.R, sp = R.spire; // freeform anchor: ALL paths always open (never crosspath-locked)
-    b.appendChild(h('div', 'card sub', 'The Spire is freeform — every path stays open. Placed towers commit to 2 paths; the Spire never does.'));
+    b.appendChild(h('div', 'card sub', G.t('spire.blurb')));
     D().spire.paths.forEach(p => { const lvl = sp.lvl[p.id] | 0;
       const cost = BN.from(D().spire.costBase * Math.pow(D().spire.costGrowth, lvl));
-      const row = h('div', 'row card', `<div class="fill"><b>${p.ico} ${p.nm}</b><span class="sub">${p.d}</span><em class="pill">Lv ${lvl}</em></div>`);
-      const btn = h('button', 'btn buy', '◆ ' + fmt(cost));
-      btn.onclick = () => { if (!BN.gte(R.essence, cost)) return G.ui.toast('Need Essence', 'warn');
+      const row = h('div', 'row card', `<div class="fill"><b>${p.ico} ${p.nm}</b><span class="sub">${p.d}</span><em class="pill">${G.t('common.lv', {n: lvl})}</em></div>`);
+      const btn = h('button', 'btn buy', G.t('tray.cost', {cost: fmt(cost)}));
+      btn.onclick = () => { if (!BN.gte(R.essence, cost)) return G.ui.toast(G.t('common.needEssence'), 'warn');
         R.essence = BN.sub(R.essence, cost); sp.lvl[p.id]++;
         if (p.id === 'aegis') { sp.hpMax = BN.mulN(sp.hpMax, 1 + p.per.hp); sp.wardMax = BN.mulN(sp.wardMax, 1 + p.per.ward); }
         G.ui.openSheet('spire'); };
@@ -5238,47 +6110,37 @@ G.ui.sheets = {
   towers(b) { const R = G.R, seen = {};
     R.towers.forEach(t => { if (seen[t.tw.id]) seen[t.tw.id].n++; else seen[t.tw.id] = {t, n: 1}; });
     Object.values(seen).forEach(g => { const lvl = (R.typeLvl && R.typeLvl[g.t.tw.id]) | 0;
-      const row = h('div', 'row card sel-tower', `<div class="fill"><b>${g.t.tw.nm} ×${g.n}</b><span class="sub num">RUN LV ${lvl} · route ${g.t.route.join('-')}</span></div>`);
+      const row = h('div', 'row card sel-tower', `<div class="fill"><b>${g.t.tw.nm} ×${g.n}</b><span class="sub num">${G.t('towers.groupSub', {lvl, route: g.t.route.join('-')})}</span></div>`);
       row.onclick = () => G.ui.openTypePanel(g.t.tw.id, g.t); b.appendChild(row); });
-    if (!R.towers.length) b.appendChild(h('div', 'card sub', 'No towers yet — pick a type below and PLACE.')); },
+    if (!R.towers.length) b.appendChild(h('div', 'card sub', G.t('towers.empty'))); },
   ults(b) { const S = G.S, MX = D().ultUp.maxSlots;
-    b.appendChild(h('div', 'card sub', `LOADOUT: <b>${S.slotted.length}/${MX} equipped</b> — each ult fires AUTO (on cooldown, AFK-safe) or MANUAL (hold-and-sync for bosses).`));
-    const cbal = h('div', 'card sub num', `⬢ <b>${S.shards | 0}</b> Ultimate Cores`); cbal.title = 'Earned from boss clears + daily drip · spent ONLY on ultimates (§4 hard-siloed)'; b.appendChild(cbal);
+    b.appendChild(h('div', 'card sub', G.t('ults.loadout', {n: S.slotted.length, max: MX})));
+    const cbal = h('div', 'card sub num', G.t('ults.coresBal', {n: S.shards | 0})); cbal.dataset.tipk = 'cur.ucore'; b.appendChild(cbal);
     D().ults.forEach(u => { const su = S.ults[u.id] = S.ults[u.id] || {lvl: 0}; const slotted = S.slotted.includes(u.id);
       const un = su.un || (su.lvl | 0) > 0 || slotted;                   // grandfather leveled/slotted ults from pre-§4 saves
       const cost = D().ultUp.shardCost(su.lvl | 0);
-      const row = h('div', 'row card' + (slotted ? ' bR' : (un ? '' : ' locked')), `<div class="fill"><b>${EG[u.el] || '✦'} ${u.nm}</b><span class="sub">${u.d} · ${u.cd}s</span><em class="pill">${un ? 'Lv ' + (su.lvl | 0) : 'LOCKED'}</em></div>`);
-      if (!un) { const ub = h('button', 'btn sm gold', '⬢ ' + D().ultUp.unlockCost + ' Unlock');
-        ub.onclick = () => { if (S.shards < D().ultUp.unlockCost) return G.ui.toast('Need Ultimate Cores', 'warn');
-          S.shards -= D().ultUp.unlockCost; su.un = 1; G.ui.toast(u.nm + ' unlocked!', 'good'); G.ui.openSheet('ults'); };
+      const row = h('div', 'row card' + (slotted ? ' bR' : (un ? '' : ' locked')), `<div class="fill"><b>${EG[u.el] || '✦'} ${u.nm}</b><span class="sub">${G.t('ults.sub', {desc: u.d, cd: u.cd})}</span><em class="pill">${un ? G.t('common.lv', {n: su.lvl | 0}) : G.t('common.lockedCaps')}</em></div>`);
+      if (!un) { const ub = h('button', 'btn sm gold', G.t('ults.unlock', {cost: D().ultUp.unlockCost}));
+        ub.onclick = () => { if (S.shards < D().ultUp.unlockCost) return G.ui.toast(G.t('ults.needCores'), 'warn');
+          S.shards -= D().ultUp.unlockCost; su.un = 1; G.ui.toast(G.t('ults.unlocked', {name: u.nm}), 'good'); G.ui.openSheet('ults'); };
         row.appendChild(ub); b.appendChild(row); return; }
       const up = h('button', 'btn sm', '⬢ ' + cost);
-      up.onclick = () => { if (S.shards < cost) return G.ui.toast('Need Ultimate Cores', 'warn');
+      up.onclick = () => { if (S.shards < cost) return G.ui.toast(G.t('ults.needCores'), 'warn');
         S.shards -= cost; su.lvl = (su.lvl | 0) + 1; G.ui.openSheet('ults'); };
-      if (slotted) { const am = h('button', 'btn sm ' + (su.auto ? 'buy' : 'ghost'), su.auto ? 'AUTO ⟳' : 'MANUAL ✋'); // item 9: per-ult toggle is a REAL control (right-click on the HUD = shortcut)
-        am.title = 'AUTO fires on cooldown (AFK); MANUAL saves it for your timing. Idle mode auto-fires everything.';
-        am.onclick = () => { su.auto = su.auto ? 0 : 1; G.ui.toast(u.nm + (su.auto ? ' → AUTO' : ' → MANUAL')); G.ui.openSheet('ults'); G.ui.renderUlts(); };
+      if (slotted) { const am = h('button', 'btn sm ' + (su.auto ? 'buy' : 'ghost'), G.t(su.auto ? 'ults.autoBtn' : 'ults.manualBtn')); // item 9: per-ult toggle is a REAL control (right-click on the HUD = shortcut)
+        am.dataset.tipk = 'ultAuto';
+        am.onclick = () => { su.auto = su.auto ? 0 : 1; G.ui.toast(G.t(su.auto ? 'ults.toAuto' : 'ults.toManual', {name: u.nm})); G.ui.openSheet('ults'); G.ui.renderUlts(); };
         row.appendChild(am); }
       row.appendChild(up);
-      const slot = h('button', 'btn sm ghost', slotted ? 'Unslot' : 'Slot');
+      const slot = h('button', 'btn sm ghost', G.t(slotted ? 'ults.unslot' : 'ults.slot'));
       slot.onclick = () => { if (slotted) S.slotted = S.slotted.filter(x => x !== u.id);
-        else if (S.slotted.length < MX) S.slotted.push(u.id); else return G.ui.toast(MX + ' slots max — unslot one first', 'warn');
+        else if (S.slotted.length < MX) S.slotted.push(u.id); else return G.ui.toast(G.t('ults.slotsFull', {n: MX}), 'warn');
         G.ui.openSheet('ults'); G.ui.renderUlts(); };
       row.appendChild(slot); b.appendChild(row); }); },
   more(b) { // consolidated meta destinations (Settings/Social reachable — audit P0)
-    [['maps', '🗺 Maps', '20 tiers · A/B/C triangle · ⚔ raid gates'],
-     ['heroes', '⟠ Heroes', 'One per run · auto-levels 1→20 · spikes 3/7/12/20'],
-     ['codex', '✦ Codex', 'Permanent Mana research'], ['foundry', '⚒ Foundry', 'Permanent tower forging'],
-     ['permtrack', '💠 Family Tracks', 'Mana — raise each family\'s start level'],
-     ['runes', '⬡ Runes', '6 slots · craft with pity · substats'],
-     ['glyphs', '◈ Glyphs', 'Run-shaping builds · craft with shards'],
-     ['familiars', '🦉 Familiars', 'Bind · support · awaken · bond tree'],
-     ['achievements', '🏆 Achievements', 'A primary Prism faucet — auto-awards'],
-     ['chronicle', '📖 Chronicle', 'The Long Night — 26 episodes'],
-     ['events', '◆ Events', 'Season · pass · dailies · tournaments'],
-     ['social', '⚑ Social', 'Guild · duo · gifts · leaderboards'],
-     ['settings', '⚙ Settings', 'Theme · quality · save']].forEach(([id, nm, d]) => {
-      const c = h('button', 'card navcard', `<h3>${nm}</h3><span class="sub">${d}</span>`);
+    ['maps', 'heroes', 'codex', 'foundry', 'permtrack', 'runes', 'glyphs', 'familiars',
+     'achievements', 'chronicle', 'events', 'social', 'settings'].forEach(id => {
+      const c = h('button', 'card navcard', `<h3>${G.t('more.' + id)}</h3><span class="sub">${G.t('more.' + id + 'Sub')}</span>`);
       c.onclick = () => G.ui.openSheet(id); b.appendChild(c); }); }
 };
 /* ================= per-TYPE compact upgrade panel (COMPACT-UI item 1 · design-refs/11-v3-final) ===
@@ -5286,7 +6148,7 @@ G.ui.sheets = {
    SPIREBOUND-HOOK: route buys loop the existing per-instance G.sim.upgradeRoute across placed
    instances — swap to shared type-route state when it lands. Drag-from-tray placement, sheet
    detents and stacking confirmMode dialogs belong to the Spirebound interaction pass. */
-const ROMAN = ['I', 'II', 'III', 'IV', 'V'], NWORD = [0, 0, 'BOTH', 'ALL THREE', 'ALL FOUR', 'ALL FIVE'];
+const ROMAN = ['I', 'II', 'III', 'IV', 'V'];
 const routeCost = t => BN.mulN(BN.from(t.tw.cost), Math.pow(1.9, t.route[0] + t.route[1] + t.route[2]) * 2); // mirrors 07-sim upgradeRoute
 const resetSheetHead = () => { const pp = $('#sheetHead').querySelector('.permpill'); if (pp) pp.remove(); };
 G.ui.closePanel = () => { $('#sheet').classList.remove('on'); G.ui.typeOpen = null; G.ui._panelAfford = null;
@@ -5298,35 +6160,40 @@ G.ui.openTypePanel = (twId, inst) => { const R = G.R; if (!R) return;
   G.ui.typeOpen = twId; G.ui.tab = 'towers'; G.ui.renderTabs();
   G.render.sel = G.ui.sel = (inst && insts.includes(inst)) ? inst : (insts[n - 1] || null);
   const sh = $('#sheet'); sh.classList.add('on'); resetSheetHead();
-  $('#sheetHead h2').innerHTML = `<span class="tpn">${tw.nm}</span> <em class="num">×${n} PLACED</em>` +
-    `<span class="tpsub">${n >= 2 ? 'ONE TAP UPGRADES ' + (NWORD[n] || 'ALL ' + n) : n ? 'UPGRADES THIS TOWER' : 'NOT PLACED — PLACE TO FIGHT'}</span>`;
+  $('#sheetHead h2').innerHTML = `<span class="tpn">${tw.nm}</span> <em class="num">${G.t('panel.placedCount', {n})}</em>` +
+    `<span class="tpsub">${n >= 2 ? G.t('panel.subMany', {word: G.t.has('panel.n' + n) ? G.t('panel.n' + n) : G.t('panel.nMany', {n})}) : n ? G.t('panel.subOne') : G.t('panel.subNone')}</span>`;
   const perm = (R.permFam && R.permFam[tw.fam]) | 0, hd = $('#sheetHead');
-  hd.insertBefore(h('span', 'permpill num', `◆ PERM <b>${perm}/99</b>`), hd.querySelector('.x'));
+  hd.insertBefore(h('span', 'permpill num', G.t('panel.perm', {n: perm})), hd.querySelector('.x'));
   $('#sheetHead .x').onclick = G.ui.closePanel;
   const b = $('#sheetBody'); b.innerHTML = ''; b.className = ''; const affs = [];
   if (n) { const t0 = insts[0];
-    b.appendChild(h('div', 'rcap num', `DMG ${fmt(t0.dmg)} · RATE ${t0.rt.toFixed(2)}/s · RNG ${Math.round(t0.rg)}${n > 1 ? ' · PER TOWER' : ''}`)); }
+    b.appendChild(h('div', 'rcap num', G.t('towers.stats', {dmg: fmt(t0.dmg), rate: t0.rt.toFixed(2), rng: Math.round(t0.rg)}) + (n > 1 ? G.t('panel.perTower') : ''))); }
   const agg = [0, 1, 2].map(j => n ? Math.min(...insts.map(t => t.route[j])) : 0);
   const past2 = agg.filter(x => x > 2).length, openN = agg.filter(x => x > 0).length;
-  tw.p.forEach((p, pi) => { const lv = agg[pi];
+  tw.p.forEach((p, pi) => { const lv = agg[pi], ultNm = (p.t[4] && p.t[4].u) || G.t('panel.ultimate');
     const locked = n && lv < 5 && ((lv === 0 && openN >= 2) || (lv === 2 && past2 >= 1)); // 2 paths max · one past T2 (07-sim rule)
     const row = h('div', 'tprow' + (locked ? ' locked' : ''));
-    row.appendChild(h('div', 'tpinfo', `<b>${p.nm}${lv === 5 ? ' ★' : ''}</b><span class="tpt">${lv >= 5 ? 'T5 · ' + ((p.t[4] && p.t[4].u) || 'ULTIMATE')
-      : 'T' + lv + '/5' + (lv === 4 ? ' · NEXT: ' + ((p.t[4] && p.t[4].u) || 'ULTIMATE') : '')}</span>`));
+    row.appendChild(h('div', 'tpinfo', `<b>${p.nm}${lv === 5 ? ' ★' : ''}</b><span class="tpt">${lv >= 5 ? G.t('panel.tierMax', {u: ultNm})
+      : G.t('panel.tierAt', {n: lv}) + (lv === 4 ? G.t('panel.tierNext', {u: ultNm}) : '')}</span>`));
     const pips = h('div', 'tpips');
     for (let k = 0; k < 5; k++) { const pst = k < lv ? 'own' : (k === lv && !locked && n && lv < 5) ? 'next' : 'dim';
       /* effect-glyph tiles (DESIGN-NEEDS-V2 §4): the ladder reads by ART — dim tiles are the info scent */
-      pips.appendChild(h('i', 'pipg' + (pst !== 'dim' ? ' ' + pst : '') + (k === 4 ? ' ult' : ''),
-        icoImg('path', twId + '.' + pi + '.' + k, 18, {st: pst}))); }
+      const pip = h('i', 'pipg' + (pst !== 'dim' ? ' ' + pst : '') + (k === 4 ? ' ult' : ''),
+        icoImg('path', twId + '.' + pi + '.' + k, 18, {st: pst}));
+      const cellD = p.t[k], tk = G.art && G.art._path ? G.art._path.pathDom(cellD) : 'd';
+      pip.setAttribute('data-tipr', G.ui.tipReg(`<b>${p.nm} · T${k + 1}${k === 4 ? ' — ' + ultNm : ''}</b>` +
+        (G.t && G.t.has('tip.key.' + tk) ? G.t('tip.key.' + tk).replace(/<b>[^<]*<\/b>/, '') : '') +
+        `<em>${Object.keys(cellD || {}).filter(x => x !== 'u').join(' · ')}</em>`));
+      pips.appendChild(pip); }
     row.appendChild(pips);
-    if (!n) row.appendChild(h('span', 'tplock', 'PLACE<br>FIRST'));
-    else if (locked) row.appendChild(h('span', 'tplock', lv === 0 ? 'LOCKED<br>2 PATHS MAX' : 'LOCKED<br>ONE PAST T2'));
-    else if (lv >= 5) row.appendChild(h('span', 'tpbuy done', '<b>ULTIMATE</b><span class="tpc">OWNED</span>'));
+    if (!n) row.appendChild(h('span', 'tplock', G.t('panel.placeFirst')));
+    else if (locked) row.appendChild(h('span', 'tplock', G.t(lv === 0 ? 'panel.lock2' : 'panel.lockPast')));
+    else if (lv >= 5) row.appendChild(h('span', 'tpbuy done', `<b>${G.t('panel.ultimate')}</b><span class="tpc">${G.t('panel.ownedTag')}</span>`));
     else { const buyers = insts.filter(t => t.route[pi] === lv);
       let total = BN.Z(); buyers.forEach(t => { total = BN.add(total, routeCost(t)); });
-      const btn = h('button', 'tpbuy num', `<b>BUY ${ROMAN[lv]}${buyers.length > 1 ? ' ×' + buyers.length : ''}</b><span class="tpc">◆ ${fmt(total)}</span>`);
+      const btn = h('button', 'tpbuy num', `<b>${G.t('panel.buy', {tier: ROMAN[lv]})}${buyers.length > 1 ? ' ×' + buyers.length : ''}</b><span class="tpc">${G.t('tray.cost', {cost: fmt(total)})}</span>`);
       btn.onclick = () => { _buying = 1; let ok = 0; buyers.forEach(t => { if (G.sim.upgradeRoute(R, t, pi)) ok++; }); _buying = 0;
-        ok ? G.ui.toast(p.nm + ' → T' + (lv + 1) + (ok > 1 ? ' ×' + ok : '')) : G.ui.toast('Need Essence', 'warn');
+        ok ? G.ui.toast(p.nm + ' → T' + (lv + 1) + (ok > 1 ? ' ×' + ok : '')) : G.ui.toast(G.t('common.needEssence'), 'warn');
         G.ui.openTypePanel(twId, G.ui.sel); };
       affs.push(() => btn.classList.toggle('afford', BN.gte(R.essence, total)));
       row.appendChild(btn); }
@@ -5335,30 +6202,30 @@ G.ui.openTypePanel = (twId, inst) => { const R = G.R; if (!R) return;
   const lvl = (R.typeLvl && R.typeLvl[twId] != null) ? R.typeLvl[twId] : perm;
   const buys = (R.typeBuys && R.typeBuys[twId]) | 0, RB = D().balance.ratchet;
   const rcost = BN.mulN(BN.from(tw.cost), RB.upBaseMul * Math.pow(RB.g, buys));
-  const rat = h('div', 'ratchet', `<span class="rl">RATCHET</span><span class="rbar"><i style="transform:scaleX(${Math.min(1, lvl / 99)})"></i>` +
-    `<em style="left:${(perm / 99 * 100).toFixed(1)}%"></em></span><span class="rlv num">RUN LV ${lvl}</span>`);
-  const rbuy = h('button', 'rbuy num', lvl >= 99 ? 'MAX' : `+1 ◆ ${fmt(rcost)}`);
-  rbuy.onclick = () => { if (!n) return G.ui.toast('Place one first', 'warn');
+  const rat = h('div', 'ratchet', `<span class="rl">${G.t('panel.ratchet')}</span><span class="rbar"><i style="transform:scaleX(${Math.min(1, lvl / 99)})"></i>` +
+    `<em style="left:${(perm / 99 * 100).toFixed(1)}%"></em></span><span class="rlv num">${G.t('panel.runLv', {n: lvl})}</span>`);
+  const rbuy = h('button', 'rbuy num', lvl >= 99 ? G.t('common.max') : G.t('panel.ratchetBuy', {cost: fmt(rcost)}));
+  rbuy.onclick = () => { if (!n) return G.ui.toast(G.t('panel.placeOne'), 'warn');
     _buying = 1; const ok = G.sim.upgradeLvl(R, insts[0]); _buying = 0;
-    ok ? G.ui.openTypePanel(twId, G.ui.sel) : G.ui.toast(lvl >= 99 ? 'Ratchet maxed' : 'Need Essence', 'warn'); };
+    ok ? G.ui.openTypePanel(twId, G.ui.sel) : G.ui.toast(G.t(lvl >= 99 ? 'panel.ratchetMax' : 'common.needEssence'), 'warn'); };
   affs.push(() => rbuy.classList.toggle('afford', n > 0 && lvl < 99 && BN.gte(R.essence, rcost)));
   rat.appendChild(rbuy); b.appendChild(rat);
-  b.appendChild(h('div', 'rcap', n ? `Runs start at your permanent level ${perm} · buy #${buys + 1} = ◆ ${fmt(rcost)} → LV ${Math.min(99, lvl + 1)}. The exponential top-end never returns.`
-    : `Runs start at permanent level ${perm}. Place a ${tw.nm} to begin the climb.`));
+  b.appendChild(h('div', 'rcap', n ? G.t('panel.ratchetCap', {perm, n: buys + 1, cost: fmt(rcost), next: Math.min(99, lvl + 1)})
+    : G.t('panel.ratchetCapEmpty', {perm, name: tw.nm})));
   /* acts — PLACE keeps the drop flow compact (§3); target + sell per §2 */
   const acts = h('div', 'tpacts');
-  const place = h('button', 'btn pri num', `PLACE ◆ ${tw.cost}`);
+  const place = h('button', 'btn pri num', G.t('panel.place', {cost: tw.cost}));
   place.onclick = () => { if (R.mode === 'idle') { const ok = G.sim.autoPlace(R, tw.id);
-      G.ui.toast(ok ? tw.nm + ' placed' : G.ui.placeFailMsg(R), ok ? '' : 'warn'); G.ui.openTypePanel(twId); return; }
+      G.ui.toast(ok ? G.t('tray.placed', {name: tw.nm}) : G.ui.placeFailMsg(R), ok ? '' : 'warn'); G.ui.openTypePanel(twId); return; }
     G.ui.placing = tw.id; G.ui.closePanel(); $('#placeHint').classList.add('on');
-    $('#placeHint').textContent = 'Tap the arena to place ' + tw.nm; };
+    $('#placeHint').textContent = G.t('hud.placeHint', {name: tw.nm}); };
   affs.push(() => place.classList.toggle('dis', !BN.gte(R.essence, BN.from(tw.cost))));
-  const pri = h('button', 'btn ghost', 'TARGET: ' + ((insts[0] && insts[0].priority) || 'first').toUpperCase());
+  const pri = h('button', 'btn ghost', G.t('towers.target', {mode: G.t('towers.target.' + ((insts[0] && insts[0].priority) || 'first'))}));
   pri.onclick = () => { const o = ['first', 'strong', 'last', 'boss'], cur = (insts[0] && insts[0].priority) || 'first';
     const nx = o[(o.indexOf(cur) + 1) % 4]; insts.forEach(t => { t.priority = nx; }); G.ui.openTypePanel(twId, G.ui.sel); };
-  const sell = h('button', 'btn danger', 'SELL');
+  const sell = h('button', 'btn danger', G.t('towers.sell'));
   sell.onclick = () => { const t = G.ui.sel || insts[n - 1]; if (!t) return;
-    const back = G.sim.sell(R, t); G.ui.toast('Sold +◆ ' + fmt(back)); G.ui.openTypePanel(twId); };
+    const back = G.sim.sell(R, t); G.ui.toast(G.t('towers.sold', {v: fmt(back)})); G.ui.openTypePanel(twId); };
   if (!n) { pri.classList.add('dis'); sell.classList.add('dis'); }
   [place, pri, sell].forEach(x => acts.appendChild(x)); b.appendChild(acts);
   G.ui._panelAfford = () => affs.forEach(f => f()); G.ui._panelAfford();
@@ -5372,31 +6239,33 @@ let _shY = null;
  ['pointerup', () => { _shY = null; }], ['pointercancel', () => { _shY = null; }]].forEach(([ev, fn]) => {
   const g = $('#sheetGrip'), hh = $('#sheetHead'); if (g) g.addEventListener(ev, fn); if (hh) hh.addEventListener(ev, fn); });
 /* ================= perk prompt (Balanced: 10s auto-pick — LOCKED #6) ================= */
-G.bus.on('perk', p => G.ui.toast('Boon offered — choose', 'good'));
+G.bus.on('perk', p => G.ui.toast(G.t('boon.offered'), 'good'));
 G.ui.perkWatch = () => { const R = G.R; if (!R || !R.pendingPerk || G.ui._perkOpen) return;
   if (R.mode !== 'active' && R.mode !== 'balanced') return;
   G.ui._perkOpen = 1; const [a, b2] = R.pendingPerk; let left = 10;
   const body = h('div', 'perk-pick');
   [a, b2].forEach((p, i) => { if (!p) return; const c = h('button', 'perk-card cat-' + p.cat, `<b>${p.nm}</b><span>${p.d}</span>`);
     c.onclick = () => { G.sim.pickPerk(R, i); done(); }; body.appendChild(c); });
-  const card = G.ui.modal('Choose a Boon', body, []);
-  if (R.mode === 'balanced') card.insertBefore(h('div', 'boon-cd', 'auto-pick in <b id="boonCd" class="num">10</b>s'), card.children[1]);
+  const card = G.ui.modal(G.t('boon.choose'), body, []);
+  if (R.mode === 'balanced') card.insertBefore(h('div', 'boon-cd', G.t('boon.autoPick')), card.children[1]);
   const done = () => { G.ui._perkOpen = 0; clearInterval(iv); $('#modals').classList.remove('on'); $('#modals').innerHTML = ''; };
   const iv = setInterval(() => { if (!R.pendingPerk) return done();
     if (R.mode === 'balanced') { const c = $('#boonCd'); if (--left <= 0) { G.sim.pickPerk(R, 0); done(); } else if (c) c.textContent = left; } }, 1000);
 };
 /* ================= tutorial (teach by doing, one beat at a time) ================= */
-const TUT = [
-  {k: 'place', msg: 'Pick a tower below → PLACE, then tap the arena (double-tap a card auto-places).', done: () => G.R.towers.length > 0},
-  {k: 'round', msg: 'Enemies leak toward the Spire. Survive the round.', done: () => G.R.round >= 2},
-  {k: 'route', msg: "Tap your tower's bottom button → BUY a path tier (2 paths max, one past T2).", done: () => G.R.towers.some(t => t.route[0] + t.route[1] + t.route[2] > 0)},
-  {k: 'ult', msg: 'Arcane Nova is ready — tap it (or right-click: AUTO).', done: () => G.R.stats && G.R.t > 60},
-  {k: 'mode', msg: 'Pick your pace: 😴 Idle · ⚖️ Balanced · ⚡ Active. AFK is never punished.', done: () => 1}
+const TUT = [   // msg = strings key, resolved at render (locale-safe)
+  {k: 'place', msg: 'tut.place', done: () => G.R.towers.length > 0},
+  {k: 'round', msg: 'tut.round', done: () => G.R.round >= 2},
+  {k: 'route', msg: 'tut.route', done: () => G.R.towers.some(t => t.route[0] + t.route[1] + t.route[2] > 0)},
+  {k: 'ult', msg: 'tut.ult', done: () => G.R.stats && G.R.t > 60},
+  {k: 'mode', msg: 'tut.mode', done: () => 1}
 ];
 G.ui.tutTick = () => { const S = G.S; if (S.tutDone) return; const step = TUT[S.tutStep | 0];
   if (!step) { S.tutDone = 1; $('#placeHint').classList.remove('on'); return; }
-  const ph = $('#placeHint'); if (!G.ui.placing) { ph.classList.add('on'); ph.textContent = step.msg; }
-  if (step.done()) { S.tutStep = (S.tutStep | 0) + 1; G.ui.toast('✓ ' + step.k, 'good'); } };
+  const ph = $('#placeHint'); if (!G.ui.placing) { ph.classList.add('on');
+    ph.innerHTML = G.t(step.msg) + ` <button id="tutSkip" class="btn sm ghost" style="margin-left:6px;padding:1px 7px;font-size:10px">${G.t('tut.skip')}</button>`; // DESIGN-FINAL-RUN 16: guided WITH a skip (Nova restyles)
+    const sk = $('#tutSkip'); if (sk) sk.onclick = e => { e.stopPropagation(); S.tutDone = 1; ph.classList.remove('on'); G.ui.toast(G.t('tut.skipped')); }; }
+  if (step.done()) { S.tutStep = (S.tutStep | 0) + 1; G.ui.toast(G.t('tut.stepDone', {step: step.k}), 'good'); } };
 /* ================= frame hook (12-main calls) ================= */
 let hudT = 0;
 G.ui.affordTick = () => { const R = G.R; if (!R) return;
@@ -5439,94 +6308,94 @@ G.cosFx = () => { if (_cos) return _cos; const S = G.S, eq = (S && S.cosmetics.e
   if (eq.familiarSkin === 'owltux') _cos.famIco = '◈';
   return _cos; };
 const equip = it => { const S = G.S; S.cosmetics.equipped[it.cat] = it.id; G.bus.emit('cosmetics');
-  if (G.applyTheme) G.applyTheme(); G.ui.toast(it.nm + ' equipped'); };
+  if (G.applyTheme) G.applyTheme(); G.ui.toast(G.t('store.equippedToast', {name: it.nm})); };
 /* ================= sheets ================= */
 Object.assign(G.ui.sheets, {
-  codex(b) { const S = G.S; b.appendChild(h('div', 'card sub num', '✦ Mana ' + fmt(S.mana)));
-    D().codex.books.forEach(bk => { if (BN.toNum(S.manaLife) < bk.gate) { row(b, `<div class="fill"><b>${bk.nm}</b><span class="sub">Unlocks at ${fmt(BN.from(bk.gate))} lifetime Mana</span></div>`); return; }
+  codex(b) { const S = G.S; b.appendChild(h('div', 'card sub num', G.t('codex.mana', {v: fmt(S.mana)})));
+    D().codex.books.forEach(bk => { if (BN.toNum(S.manaLife) < bk.gate) { row(b, `<div class="fill"><b>${bk.nm}</b><span class="sub">${G.t('codex.locked', {v: fmt(BN.from(bk.gate))})}</span></div>`); return; }
       row(b, `<div class="fill"><b>${bk.nm}</b></div>`);
       bk.lines.forEach(l => { const key = bk.id + '.' + l.id, lvl = S.codex[key] | 0;
         const cost = BN.from(bk.base * Math.pow(D().codex.costGrowth, lvl));
-        const r = row(b, `<div class="fill"><span>${l.nm}</span><em class="pill">Lv ${lvl}${l.cap ? ' · cap ' + Math.round(l.cap * 100) + '%' : ''}</em></div>`);
-        r.appendChild(btn('✦ ' + fmt(cost), 'sm buy', () => { G.sim.buyCodex(S, bk.id, l.id) ? G.ui.openSheet('codex') : G.ui.toast('Need Mana', 'warn'); })); }); }); },
+        const r = row(b, `<div class="fill"><span>${l.nm}</span><em class="pill">${G.t('common.lv', {n: lvl})}${l.cap ? G.t('codex.cap', {pct: Math.round(l.cap * 100)}) : ''}</em></div>`);
+        r.appendChild(btn('✦ ' + fmt(cost), 'sm buy', () => { G.sim.buyCodex(S, bk.id, l.id) ? G.ui.openSheet('codex') : G.ui.toast(G.t('codex.needMana'), 'warn'); })); }); }); },
   foundry(b) { const S = G.S, B = D().balance.mastery;
-    b.appendChild(h('div', 'card sub', '⚒ Permanent forging — survives every run. Cores drop from kills by the tower that lands them. The 12-node MASTERY SPINE opens placed towers pre-built (33/66/100% → route tier 1/3/5 on your committed path).'));
+    b.appendChild(h('div', 'card sub', G.t('foundry.blurb')));
     D().towers.filter(tw => (S.cores[tw.id] | 0) > 0 || S.foundry[tw.id] || (S.mastery && S.mastery[tw.id])).concat(D().towers.slice(0, 8)).filter((tw, i, a) => a.indexOf(tw) === i).slice(0, 24).forEach(tw => {
       const c = S.cores[tw.id] | 0, f = S.foundry[tw.id] || {}, n = (S.mastery && S.mastery[tw.id]) | 0;
       const ch = G.sim.masteryCh(S, tw.id), pct = Math.round(n / B.nodes * 100), cost = G.sim.masteryCost(S, tw.id);
       const pips = Array.from({length: B.nodes}, (_, i) => `<i class="pip${i < n ? ' on' : ''}${i > 0 && i % 4 === 0 ? ' gap' : ''}"></i>`).join('');
-      const r = row(b, `<div class="fill"><b>${tw.nm}${ch >= 3 ? ' <em class="pill gold">★ FORGED</em>' : ''}</b><span class="sub num">⬢ ${c} cores · spine ${pct}%${ch > 0 ? ` · opens T${B.tiers[ch - 1]}` : ''} · d${f.d | 0} rt${f.rt | 0} rg${f.rg | 0}</span><span class="spine">${pips}</span></div>`);
+      const r = row(b, `<div class="fill"><b>${tw.nm}${ch >= 3 ? ` <em class="pill gold">${G.t('foundry.forged')}</em>` : ''}</b><span class="sub num">${G.t('foundry.cores', {n: c, pct, opens: ch > 0 ? G.t('foundry.opensT', {t: B.tiers[ch - 1]}) : '', d: f.d | 0, rt: f.rt | 0, rg: f.rg | 0})}</span><span class="spine">${pips}</span></div>`);
       if (cost != null) { const need = B.gates[Math.floor(n / 4)] | 0, locked = (S.stats.bosses | 0) < need;
-        r.appendChild(btn(locked ? `🔒 ${need} bosses` : '⬢ ' + cost, 'sm ' + (locked ? 'ghost' : 'buy'), () => {
-          G.sim.buyMastery(S, tw.id) ? G.ui.openSheet('foundry') : G.ui.toast(locked ? `Chapter locked — defeat ${need} bosses (${S.stats.bosses | 0} so far)` : 'Need Cores', 'warn'); })); }
+        r.appendChild(btn(locked ? G.t('foundry.bossGate', {n: need}) : '⬢ ' + cost, 'sm ' + (locked ? 'ghost' : 'buy'), () => {
+          G.sim.buyMastery(S, tw.id) ? G.ui.openSheet('foundry') : G.ui.toast(locked ? G.t('foundry.bossGateMsg', {n: need, k: S.stats.bosses | 0}) : G.t('foundry.needCores'), 'warn'); })); }
       if (ch > 0) { const pv = (S.masteryPath && S.masteryPath[tw.id]) | 0;                    // committed pre-build path (insta contract §4)
         r.appendChild(btn('P' + (pv + 1), 'sm ghost', () => { (S.masteryPath = S.masteryPath || {})[tw.id] = (pv + 1) % 3; G.ui.openSheet('foundry'); })); }
-      ['d', 'rt', 'rg'].forEach(nd => r.appendChild(btn('+' + nd, 'sm', () => { G.sim.buyFoundry(S, tw.id, nd) ? G.ui.openSheet('foundry') : G.ui.toast('Need Cores', 'warn'); }))); });
-    row(b, `<div class="fill"><b>Ley-Lines</b><span class="sub">research — stacks uncapped</span></div>`);
+      ['d', 'rt', 'rg'].forEach(nd => { const fb = btn('+' + nd, 'sm', () => { G.sim.buyFoundry(S, tw.id, nd) ? G.ui.openSheet('foundry') : G.ui.toast(G.t('foundry.needCores'), 'warn'); });
+        fb.dataset.tipk = 'key.' + nd; r.appendChild(fb); }); });
+    row(b, `<div class="fill"><b>${G.t('foundry.leyTitle')}</b><span class="sub">${G.t('foundry.leySub')}</span></div>`);
     D().leylines.lines.forEach(l => { const lvl = G.S.leylines[l.id] | 0;
-      const r = row(b, `<div class="fill"><span>${l.nm}</span><em class="pill">Lv ${lvl}</em></div>`);
+      const r = row(b, `<div class="fill"><span>${l.nm}</span><em class="pill">${G.t('common.lv', {n: lvl})}</em></div>`);
       r.appendChild(btn('✦ ' + fmt(BN.from(D().leylines.base * Math.pow(D().leylines.costGrowth, lvl))), 'sm buy',
-        () => { G.sim.buyLey(G.S, l.id) ? G.ui.openSheet('foundry') : G.ui.toast('Need Mana / maxed', 'warn'); })); }); },
+        () => { G.sim.buyLey(G.S, l.id) ? G.ui.openSheet('foundry') : G.ui.toast(G.t('foundry.leyFail'), 'warn'); })); }); },
   /* ---------- PERM-TRACK — 7 family stat tracks (Mana · applies NEXT run as each type's START level) ---------- */
   permtrack(b) { const S = G.S, B = D().balance.famTrack;
-    const FAMS = [[1, '🔥', 'Elemental Core'], [2, '💰', 'Support & Economy'], [3, '❄', 'Control & Disruption'],
-      [4, '🐺', 'Summoners & Minions'], [5, '🎯', 'Precision & Siege'], [6, '✦', 'Arcane & Exotic'], [7, '💠', 'Relic & Endgame']];
-    b.appendChild(h('div', 'card sub num', `✦ Mana ${fmt(S.mana)} — permanent family levels. Each level raises the <b>starting route level</b> of every tower in that family, applied at the start of your next run.`));
+    const FAMS = [[1, '🔥'], [2, '💰'], [3, '❄'], [4, '🐺'], [5, '🎯'], [6, '✦'], [7, '💠']];
+    b.appendChild(h('div', 'card sub num', G.t('famtrack.blurb', {v: fmt(S.mana)})));
     const perm = (S.perm && S.perm.fam) || {};
-    FAMS.forEach(([fam, ico, nm]) => { const lvl = perm[fam] | 0, cnt = D().towers.filter(t => t.fam === fam).length;
+    FAMS.forEach(([fam, ico]) => { const nm = G.t('famtrack.f' + fam), lvl = perm[fam] | 0, cnt = D().towers.filter(t => t.fam === fam).length;
       const maxed = lvl >= B.max, cost = BN.from(B.base * Math.pow(B.g, lvl));
-      const r = row(b, `<div class="fill"><b>${ico} ${nm}</b><span class="sub num">${cnt} towers · start every run at Lv ${lvl}</span><em class="pill">Lv ${lvl}/${B.max}</em></div>`, maxed ? 'bL' : '');
-      r.appendChild(maxed ? h('span', 'pill', 'MAX') : btn('✦ ' + fmt(cost), 'sm buy',
-        () => { G.sim.buyPermFam(S, fam) ? (G.ui.openSheet('permtrack'), G.ui.toast(nm + ' → Lv ' + (lvl + 1) + ' (next run)')) : G.ui.toast('Need Mana', 'warn'); })); }); },
+      const r = row(b, `<div class="fill"><b>${ico} ${nm}</b><span class="sub num">${G.t('famtrack.rowSub', {n: cnt, lvl})}</span><em class="pill">${G.t('common.lvOf', {n: lvl, max: B.max})}</em></div>`, maxed ? 'bL' : '');
+      r.appendChild(maxed ? h('span', 'pill', G.t('common.max')) : btn('✦ ' + fmt(cost), 'sm buy',
+        () => { G.sim.buyPermFam(S, fam) ? (G.ui.openSheet('permtrack'), G.ui.toast(G.t('famtrack.up', {name: nm, n: lvl + 1}))) : G.ui.toast(G.t('common.needMana'), 'warn'); })); }); },
   /* ---------- RUNES (6 slots · pity visible · craft/equip/salvage/+) ---------- */
   runes(b) { const S = G.S, RD = D().runes;
-    b.appendChild(h('div', 'card sub num', `Rune Dust ${S.dust | 0} · pity — epic ${S.runes.pity.epic}/${RD.pity.epic} · legendary ${S.runes.pity.legendary}/${RD.pity.legendary} · mythic ${S.runes.pity.mythic | 0}/${RD.pity.mythic}`));
-    const cr = row(b, `<div class="fill"><b>Craft Rune</b><span class="sub">60 dust — dust drops from bosses + salvage</span></div>`);
-    cr.appendChild(btn('Craft (60)', 'buy', () => { const rn = G.sim.runeCraft(S);
-      G.ui.toast(rn ? '⚙ ' + rn.rar.toUpperCase() + ' ' + rn.slot + ' rune!' : 'Need 60 dust', rn ? 'good' : 'warn'); G.ui.openSheet('runes'); }));
+    b.appendChild(h('div', 'card sub num', G.t('runes.header', {dust: S.dust | 0, ep: S.runes.pity.epic, epMax: RD.pity.epic, leg: S.runes.pity.legendary, legMax: RD.pity.legendary, myth: S.runes.pity.mythic | 0, mythMax: RD.pity.mythic})));
+    const cr = row(b, `<div class="fill"><b>${G.t('runes.craftTitle')}</b><span class="sub">${G.t('runes.craftSub')}</span></div>`);
+    cr.appendChild(btn(G.t('runes.craftBtn'), 'buy', () => { const rn = G.sim.runeCraft(S);
+      G.ui.toast(rn ? G.t('runes.craftOk', {rar: rn.rar.toUpperCase(), slot: rn.slot}) : G.t('runes.craftFail'), rn ? 'good' : 'warn'); G.ui.openSheet('runes'); }));
     RD.slots.forEach(sl => { const rn = S.runes.equipped[sl.id];
-      row(b, `<div class="fill"><b>${sl.nm}</b><span class="sub">main: ${sl.main}</span><em class="pill ${rn ? rc(rn.rar) : ''}">${rn ? rn.rar.toUpperCase() + ' +' + (rn.plus | 0) : 'empty'}</em></div>`); });
-    row(b, `<div class="fill"><b>Inventory (${S.runes.inv.length})</b></div>`);
+      row(b, `<div class="fill"><b>${sl.nm}</b><span class="sub">${G.t('runes.slotMain', {main: sl.main})}</span><em class="pill ${rn ? rc(rn.rar) : ''}">${rn ? G.t('runes.slotFilled', {rar: rn.rar.toUpperCase(), plus: rn.plus | 0}) : G.t('common.empty')}</em></div>`); });
+    row(b, `<div class="fill"><b>${G.t('runes.inventory', {n: S.runes.inv.length})}</b></div>`);
     S.runes.inv.slice().reverse().slice(0, 20).forEach(rn => {
-      const r = row(b, `<div class="fill"><b class="${rc(rn.rar)}">${rn.rar.toUpperCase()} ${rn.slot} +${rn.plus | 0}</b><span class="sub">${(rn.subs || []).join(' · ') || 'no substats'}</span></div>`, rb(rn.rar));
-      r.appendChild(btn('Equip', 'sm buy', () => { G.sim.runeEquip(S, rn.id); G.ui.openSheet('runes'); }));
-      r.appendChild(btn('+' + (25 * (rn.plus + 1)), 'sm', () => { G.sim.runeUp(S, rn.id) ? G.ui.openSheet('runes') : G.ui.toast('Need dust / maxed', 'warn'); }));
-      r.appendChild(btn('Salvage', 'sm ghost', () => { G.sim.runeSalvage(S, rn.id); G.ui.openSheet('runes'); })); }); },
+      const r = row(b, `<div class="fill"><b class="${rc(rn.rar)}">${rn.rar.toUpperCase()} ${rn.slot} +${rn.plus | 0}</b><span class="sub">${(rn.subs || []).join(' · ') || G.t('runes.noSubs')}</span></div>`, rb(rn.rar));
+      r.appendChild(btn(G.t('common.equip'), 'sm buy', () => { G.sim.runeEquip(S, rn.id); G.ui.openSheet('runes'); }));
+      r.appendChild(btn('+' + (25 * (rn.plus + 1)), 'sm', () => { G.sim.runeUp(S, rn.id) ? G.ui.openSheet('runes') : G.ui.toast(G.t('runes.upFail'), 'warn'); }));
+      r.appendChild(btn(G.t('runes.salvage'), 'sm ghost', () => { G.sim.runeSalvage(S, rn.id); G.ui.openSheet('runes'); })); }); },
   /* ---------- GLYPHS (craft with shards · slot + legendary caps enforced) ---------- */
   glyphs(b) { const S = G.S, GD = D().glyphs;
     const max = Math.min(GD.slots.max || 6, (GD.slots.start || 3) + Math.floor((S.acct.lvl || 1) / 15));
-    b.appendChild(h('div', 'card sub num', `◈ ${S.glyphShards | 0} Chroma Shards · equipped ${S.glyphs.equipped.length}/${max} · legendary cap ${GD.maxLegendary || 2}`));
+    b.appendChild(h('div', 'card sub num', G.t('glyphs.header', {shards: S.glyphShards | 0, eq: S.glyphs.equipped.length, max, cap: GD.maxLegendary || 2})));
     GD.list.forEach(g => { const owned = !!S.glyphs.owned[g.id], eq = S.glyphs.equipped.includes(g.id);
       const cost = GD.craftShards[g.rar] || 45;
       const r = row(b, `<div class="fill"><b class="${rc(g.rar)}">${g.nm}</b><span class="sub">${g.d}</span></div>`, eq ? 'bE' : '');
-      if (!owned) r.appendChild(btn('◈ ' + cost, 'sm buy', () => { G.sim.glyphCraft(S, g.id) ? G.ui.openSheet('glyphs') : G.ui.toast('Need Shards', 'warn'); }));
-      else r.appendChild(btn(eq ? 'Unequip' : 'Equip', 'sm ' + (eq ? 'ghost' : 'buy'), () => {
-        (eq ? G.sim.glyphUnequip(S, g.id) : G.sim.glyphEquip(S, g.id)) ? G.ui.openSheet('glyphs') : G.ui.toast('Slots full / legendary cap', 'warn'); })); }); },
+      if (!owned) r.appendChild(btn(G.t('glyphs.craftCost', {cost}), 'sm buy', () => { G.sim.glyphCraft(S, g.id) ? G.ui.openSheet('glyphs') : G.ui.toast(G.t('glyphs.needShards'), 'warn'); }));
+      else r.appendChild(btn(G.t(eq ? 'common.unequip' : 'common.equip'), 'sm ' + (eq ? 'ghost' : 'buy'), () => {
+        (eq ? G.sim.glyphUnequip(S, g.id) : G.sim.glyphEquip(S, g.id)) ? G.ui.openSheet('glyphs') : G.ui.toast(G.t('glyphs.capFail'), 'warn'); })); }); },
   /* ---------- FAMILIARS (bind · support · awaken · bond · menagerie) ---------- */
   familiars(b) { const S = G.S, FD = D().familiars, F = S.familiars;
     const bl = (F.owned[F.bound] && F.owned[F.bound].lvl) | 0;
-    b.appendChild(h('div', 'card sub num', `Menagerie ${Object.keys(F.owned).length}/${FD.list.length} · Attunement Dust ${F.dust | 0} · support slots ${bl >= 40 ? 2 : bl >= 20 ? 1 : 0} (bound Lv20/40)`));
+    b.appendChild(h('div', 'card sub num', G.t('fam.header', {owned: Object.keys(F.owned).length, total: FD.list.length, dust: F.dust | 0, slots: bl >= 40 ? 2 : bl >= 20 ? 1 : 0})));
     FD.list.forEach(f => { const o = F.owned[f.id], bound = F.bound === f.id, sup = (F.support || []).includes(f.id);
       const need = l => FD.system.axp.base * Math.pow(l, FD.system.axp.pow);
-      const r = row(b, `<div class="fill"><b>${f.emoji || '◉'} ${f.nm}${bound ? ' — BOUND' : sup ? ' — SUPPORT' : ''}</b>
+      const r = row(b, `<div class="fill"><b>${f.emoji || '◉'} ${f.nm}${bound ? G.t('fam.bound') : sup ? G.t('fam.supportTag') : ''}</b>
         <span class="sub">${f.title || f.role || ''} · ${f.passive ? f.passive.nm + ': ' + f.passive.d : ''}</span>
-        ${o ? `<span class="sub num">LV ${o.lvl} · AXP ${Math.round(o.axp)}/${Math.round(need(o.lvl))}${o.awaken ? ' · ★' + o.awaken : ''}</span>` : `<span class="sub">🔒 ${(f.unlock || {}).type || 'locked'}${f.unlock && f.unlock.v ? ' ' + f.unlock.v : ''}</span>`}</div>`,
+        ${o ? `<span class="sub num">${G.t('fam.stats', {lvl: o.lvl, axp: Math.round(o.axp), need: Math.round(need(o.lvl))})}${o.awaken ? ' · ★' + o.awaken : ''}</span>` : `<span class="sub">${G.t('fam.lockedUnlock', {type: (f.unlock || {}).type || G.t('common.locked')})}${f.unlock && f.unlock.v ? ' ' + f.unlock.v : ''}</span>`}</div>`,
         bound ? 'bL' : '');
-      if (o) { if (!bound) r.appendChild(btn('Bind', 'sm buy', () => { G.sim.famBind(S, f.id); G.ui.openSheet('familiars'); }));
-        if (!bound) r.appendChild(btn(sup ? 'Unassign' : 'Support', 'sm ghost', () => { G.sim.famSupport(S, f.id) ? G.ui.openSheet('familiars') : G.ui.toast('Support locked (bound Lv20/40)', 'warn'); }));
-        if (o.lvl >= FD.system.cadence.awakenAt) r.appendChild(btn('Awaken', 'sm gold', () => { G.sim.famAwaken(S, f.id) ? G.ui.openSheet('familiars') : G.ui.toast('Need dust / max ★', 'warn'); })); }
-      else if (G.sim.famUnlockable(S, f)) r.appendChild(btn('Claim', 'sm buy', () => { G.sim.famUnlock(S, f.id); G.ui.openSheet('familiars'); })); });
-    row(b, `<div class="fill"><b>Bond Tree</b><span class="sub">spend Attunement Dust — permanent familiar mastery</span></div>`);
+      if (o) { if (!bound) r.appendChild(btn(G.t('fam.bind'), 'sm buy', () => { G.sim.famBind(S, f.id); G.ui.openSheet('familiars'); }));
+        if (!bound) r.appendChild(btn(G.t(sup ? 'fam.unassign' : 'fam.support'), 'sm ghost', () => { G.sim.famSupport(S, f.id) ? G.ui.openSheet('familiars') : G.ui.toast(G.t('fam.supportFail'), 'warn'); }));
+        if (o.lvl >= FD.system.cadence.awakenAt) r.appendChild(btn(G.t('fam.awaken'), 'sm gold', () => { G.sim.famAwaken(S, f.id) ? G.ui.openSheet('familiars') : G.ui.toast(G.t('fam.awakenFail'), 'warn'); })); }
+      else if (G.sim.famUnlockable(S, f)) r.appendChild(btn(G.t('common.claim'), 'sm buy', () => { G.sim.famUnlock(S, f.id); G.ui.openSheet('familiars'); })); });
+    row(b, `<div class="fill"><b>${G.t('fam.bondTitle')}</b><span class="sub">${G.t('fam.bondSub')}</span></div>`);
     FD.system.bond.branches.forEach(br => { const lvl = (F.bond && F.bond[br.id]) | 0;
-      const r = row(b, `<div class="fill"><span>${br.nm}</span><span class="sub">${br.k}</span><em class="pill">Lv ${lvl}/10</em></div>`);
-      r.appendChild(btn(30 * Math.pow(2, lvl) + ' dust', 'sm', () => { G.sim.famBond(S, br.id) ? G.ui.openSheet('familiars') : G.ui.toast('Need dust / maxed', 'warn'); })); }); },
+      const r = row(b, `<div class="fill"><span>${br.nm}</span><span class="sub">${br.k}</span><em class="pill">${G.t('fam.bondLvl', {n: lvl})}</em></div>`);
+      r.appendChild(btn(G.t('fam.bondCost', {cost: 30 * Math.pow(2, lvl)}), 'sm', () => { G.sim.famBond(S, br.id) ? G.ui.openSheet('familiars') : G.ui.toast(G.t('fam.bondFail'), 'warn'); })); }); },
   /* ---------- ACHIEVEMENTS (42 · auto-award · pinned nearest) ---------- */
   achievements(b) { const S = G.S, done = id => !!S.ach[id];
     const n = D().achievements.filter(a => done(a.id)).length;
-    b.appendChild(h('div', 'card sub num', `${n}/${D().achievements.length} complete — rewards auto-award the moment you earn them`));
+    b.appendChild(h('div', 'card sub num', G.t('ach.header', {done: n, total: D().achievements.length})));
     let cat = G.ui._achCat || 'all';
     const cats = ['all', 'prog', 'mast', 'comb', 'eco', 'coll', 'soc', 'chal'];
-    const seg = h('div', 'seg'); cats.forEach(c => { const x = h('button', c === cat ? 'on' : '', c.toUpperCase());
+    const seg = h('div', 'seg'); cats.forEach(c => { const x = h('button', c === cat ? 'on' : '', G.t('ach.cat' + c[0].toUpperCase() + c.slice(1)));
       x.onclick = () => { G.ui._achCat = c; G.ui.openSheet('achievements'); }; seg.appendChild(x); }); b.appendChild(seg);
     D().achievements.filter(a => cat === 'all' || a.cat === cat).forEach(a => {
       row(b, `<div class="fill"><b>${done(a.id) ? '🏆' : '◇'} ${a.nm}</b><span class="sub">${a.goal}</span>
@@ -5535,215 +6404,231 @@ Object.assign(G.ui.sheets, {
   /* ---------- CHRONICLE — The Long Night, delivered ---------- */
   chronicle(b) { const S = G.S, eps = D().episodes, un = G.liveops ? G.liveops.episodesUnlocked(S) : 1;
     const se = G.liveops ? G.liveops.season(S) : null;
-    b.appendChild(h('div', 'card sub', `<b>THE LONG NIGHT</b> — ${un}/${eps.length} episodes${se ? ' · Season ' + se.s + ' “' + se.nm + '” · Drop ' + se.drop : ''}`));
+    b.appendChild(h('div', 'card sub', G.t('chron.header', {un, total: eps.length}) + (se ? G.t('chron.season', {s: se.s, name: se.nm, drop: se.drop}) : '')));
     eps.forEach((ep, i) => { if (i < un)
-        row(b, `<div class="fill"><b>Ep ${i + 1} · ${ep.nm}</b><span class="sub" style="font-size:12.5px;line-height:1.45">${ep.tx}</span><em class="sub" style="color:var(--gilt)">${ep.st}</em></div>`);
-      else row(b, `<div class="fill"><b style="opacity:.6">Ep ${i + 1} · ???</b><span class="sub">unlocks S${ep.s} · biweekly drop</span></div>`); }); },
+        row(b, `<div class="fill"><b>${G.t('chron.ep', {n: i + 1, name: ep.nm})}</b><span class="sub" style="font-size:12.5px;line-height:1.45">${ep.tx}</span><em class="sub" style="color:var(--gilt)">${ep.st}</em></div>`);
+      else row(b, `<div class="fill"><b style="opacity:.6">${G.t('chron.epLocked', {n: i + 1})}</b><span class="sub">${G.t('chron.epLockedSub', {s: ep.s})}</span></div>`); }); },
   /* ---------- HEROES (DESIGN-FINAL-RUN 8, §6a) — roster · pick per run · spike arcs ---------- */
   heroes(b) { const S = G.S, R = G.R, sys = D().heroes.system;
-    const SRC = {pass: 'SEASON PASS CAPSTONE', event: 'EVENT SHOP', guild: 'GUILD SHOP', shop: 'STORE'};
-    b.appendChild(h('div', 'card sub', 'ONE hero per run — auto-levels <b>1→20</b> (+1/kill, +10·wave), ability spikes at <b>3 / 7 / 12 / 20</b>. Familiar is a separate passive aura — bring both.'));
+    const SRC = {pass: G.t('heroes.srcPass'), event: G.t('heroes.srcEvent'), guild: G.t('heroes.srcGuild'), shop: G.t('heroes.srcShop')};
+    const bl2 = h('div', 'card sub', G.t('heroes.blurb')); bl2.dataset.tipk = 'hero'; b.appendChild(bl2);
     D().heroes.list.forEach(hd => { const owned = !!(S.heroes.owned || {})[hd.id], picked = S.heroes.picked === hd.id;
       const live = picked && R && R.hero && R.hero.id === hd.id;
       const spikes = hd.spikes.map(s => `<em class="sub" style="display:block">L${s.at} — ${s.d}</em>`).join('');
-      const r = row(b, `<div class="fill"><b style="${owned ? '' : 'opacity:.55'}">${hd.emoji} ${hd.nm}${picked ? ' <em class="pill gold">PICKED</em>' : ''}${live ? ` <em class="pill num">LV ${R.hero.lvl}</em>` : ''}</b>
+      const r = row(b, `<div class="fill"><b style="${owned ? '' : 'opacity:.55'}">${hd.emoji} ${hd.nm}${picked ? ` <em class="pill gold">${G.t('heroes.picked')}</em>` : ''}${live ? ` <em class="pill num">${G.t('hud.famLevel', {n: R.hero.lvl})}</em>` : ''}</b>
         <span class="sub">${hd.role} · ${hd.el.toUpperCase()} — ${hd.d}</span>${spikes}</div>`, picked ? 'bR' : (owned ? '' : 'locked'));
-      if (owned && !picked) r.appendChild(btn('Pick', 'sm buy', () => { S.heroes.picked = hd.id; G.ui.toast(hd.nm + ' picked — leads your NEXT run'); G.ui.openSheet('heroes'); }));
-      if (!owned) r.appendChild(h('em', 'pill', SRC[hd.src] || 'LOCKED')); }); },
+      if (owned && !picked) r.appendChild(btn(G.t('heroes.pick'), 'sm buy', () => { S.heroes.picked = hd.id; G.ui.toast(G.t('heroes.pickToast', {name: hd.nm})); G.ui.openSheet('heroes'); }));
+      if (!owned) r.appendChild(h('em', 'pill', SRC[hd.src] || G.t('common.lockedCaps'))); }); },
   /* ---------- MAPS — 20 tiers × A/B/C strategic triangle + advance tri-lock ---------- */
   maps(b) { const S = G.S, R = G.R;
-    b.appendChild(h('div', 'card sub', 'Advance = <b>R100 on all 3 maps → ⚔ RAID (pick your map)</b> → next tier. [A] Economy · [B] Skill (Long-Exposure) · [C] Gauntlet.'));
+    b.appendChild(h('div', 'card sub', G.t('maps.blurb')));
     D().tiers.forEach(ti => { const unlocked = ti.t <= (S.tiers.unlocked | 0);
       const clr = i => S.tiers.cleared[ti.t + '_' + i] ? '●' : '○';
       const rDone = S.tiers.raid && S.tiers.raid[ti.t];
       const hd = row(b, `<div class="fill"><b style="${unlocked ? '' : 'opacity:.5'}">T${ti.t} · ${ti.nm}</b>
-        <span class="sub">${ti.biome || ''} · reward ×${ti.premMul || 1} · best R${(S.tiers.best[ti.t] | 0)}${S.tiers.bestHard[ti.t] ? ' · hard R' + S.tiers.bestHard[ti.t] : ''} · ${clr(0)}${clr(1)}${clr(2)}${rDone ? ' · ⚔✓' : ''}</span></div>`,
+        <span class="sub">${G.t('maps.tierBest', {biome: ti.biome || '', mul: ti.premMul || 1, best: S.tiers.best[ti.t] | 0})}${S.tiers.bestHard[ti.t] ? G.t('maps.tierHardBest', {best: S.tiers.bestHard[ti.t]}) : ''} · ${clr(0)}${clr(1)}${clr(2)}${rDone ? ' · ⚔✓' : ''}</span></div>`,
         unlocked ? '' : 'locked');
       if (!unlocked) return;
       ti.maps.forEach((m, i) => { const cur = R && R.tier === ti.t && R.mapIdx === i;
-        const r = row(b, `<div class="fill"><span>[${m.slot}] ${m.nm}${cur ? ' — CURRENT' : ''}</span><span class="sub">${(m.arch || '').toUpperCase()} · ${({A: 'ECONOMY', B: 'SKILL', C: 'GAUNTLET'})[m.slot] || ''}${S.tiers.cleared[ti.t + '_' + i] ? ' · R100 ✓' : ''}</span></div>`, cur ? 'bR' : '');
-        r.appendChild(btn('Run', 'sm buy', () => { G.main.newRun({tier: ti.t, mapIdx: i}); G.ui.toast('T' + ti.t + ' · ' + m.nm); $('#sheet').classList.remove('on'); }));
-        if (S.tiers.cleared[ti.t + '_' + i]) r.appendChild(btn('Hard', 'sm ghost', () => { G.main.newRun({tier: ti.t, mapIdx: i, hard: 1}); $('#sheet').classList.remove('on'); })); });
+        const r = row(b, `<div class="fill"><span>[${m.slot}] ${m.nm}${cur ? G.t('maps.mapCurrent') : ''}</span><span class="sub">${(m.arch || '').toUpperCase()} · ${G.t.has('role.' + m.slot) ? G.t('role.' + m.slot) : ''}${S.tiers.cleared[ti.t + '_' + i] ? G.t('maps.mapCleared') : ''}</span></div>`, cur ? 'bR' : '');
+        r.appendChild(btn(G.t('common.run'), 'sm buy', () => { G.main.newRun({tier: ti.t, mapIdx: i}); G.ui.toast(G.t('maps.runToast', {tier: ti.t, name: m.nm})); $('#sheet').classList.remove('on'); }));
+        if (S.tiers.cleared[ti.t + '_' + i]) r.appendChild(btn(G.t('maps.hard'), 'sm ghost', () => { G.main.newRun({tier: ti.t, mapIdx: i, hard: 1}); $('#sheet').classList.remove('on'); })); });
       /* ---- the tier RAID row (DESIGN-FINAL-RUN 5+7): 3/3 clears open it; pick your map; clear = advance ---- */
       const all3 = [0, 1, 2].every(i => S.tiers.cleared[ti.t + '_' + i]);
-      if (all3) { const rr = row(b, `<div class="fill"><b>⚔ RAID · ${ti.bossNm || 'Signature Boss'}${rDone ? ' <em class="pill gold">CLEARED ✓</em>' : ''}</b><span class="sub">${rDone ? 'replay the encounter — pick your map' : 'signature boss + waves together — afkable if over-progressed, punishing on-level. Pick your map:'}</span></div>`, rDone ? '' : 'bR');
-        ti.maps.forEach((m, i) => rr.appendChild(btn(m.slot, 'sm ' + (rDone ? 'ghost' : 'buy'), () => { if (G.main.newRun({tier: ti.t, mapIdx: i, raid: 1})) { G.ui.toast('⚔ RAID · ' + (ti.bossNm || 'Boss') + ' — ' + m.nm); $('#sheet').classList.remove('on'); } }))); }
+      if (all3) { const rr = row(b, `<div class="fill"><b>${G.t('maps.raidTitle', {boss: ti.bossNm || G.t('maps.raidFallback')})}${rDone ? ` <em class="pill gold">${G.t('maps.raidClearedTag')}</em>` : ''}</b><span class="sub">${G.t(rDone ? 'maps.raidReplaySub' : 'maps.raidSub')}</span></div>`, rDone ? '' : 'bR');
+        rr.dataset.tipk = 'raid';
+        ti.maps.forEach((m, i) => rr.appendChild(btn(m.slot, 'sm ' + (rDone ? 'ghost' : 'buy'), () => { if (G.main.newRun({tier: ti.t, mapIdx: i, raid: 1})) { G.ui.toast(G.t('maps.raidToast', {boss: ti.bossNm || G.t('maps.bossShort'), map: m.nm})); $('#sheet').classList.remove('on'); } }))); }
       else if (ti.t === (S.tiers.unlocked | 0) && ti.t < 20) { const n = [0, 1, 2].filter(i => !S.tiers.cleared[ti.t + '_' + i]).length;
-        row(b, `<div class="fill"><b style="opacity:.55">⚔ RAID — locked</b><span class="sub">clear ${n} more map${n > 1 ? 's' : ''} at R100 to face ${ti.bossNm || 'the tier boss'}</span></div>`, 'locked'); } }); },
+        row(b, `<div class="fill"><b style="opacity:.55">${G.t('maps.raidLocked')}</b><span class="sub">${G.t(n > 1 ? 'maps.raidLockedSubN' : 'maps.raidLockedSub1', {n, boss: ti.bossNm || G.t('maps.bossFallback')})}</span></div>`, 'locked'); } }); },
   /* ---------- PRESTIGE — ascension/relics · transcendence/aether · convergence · axes ---------- */
   prestige(b) { const S = G.S, R = G.R, P = D().prestige;
     const bn = Object.values(S.tiers.best), bh = Object.values(S.tiers.bestHard);
-    b.appendChild(h('div', 'card sub num', `Highest Round — Normal R${bn.length ? Math.max(...bn) : 0} · Hard R${bh.length ? Math.max(...bh) : 0} · Ordeal Marks ${S.ordealMarks | 0}`));
-    const asc = row(b, `<div class="fill"><b>Ascension</b><span class="sub">R100+ → Relics (keeps runes/glyphs/foundry/ults/familiars)</span><em class="pill num">▲ ${fmt(S.relics)} · ${S.prestige.ascensions}×</em></div>`);
-    asc.appendChild(btn(R && R.round >= 100 ? 'ASCEND' : 'Reach R100', R && R.round >= 100 ? 'buy' : 'ghost', () => {
-      const got = G.sim.ascend(S); if (got) { G.ui.toast('Ascended! +' + fmt(got) + ' Relics', 'good'); G.ach.check(S); G.main.newRun(); G.ui.openSheet('prestige'); } else G.ui.toast('Reach round 100 first', 'warn'); }));
+    b.appendChild(h('div', 'card sub num', G.t('prestige.header', {normal: bn.length ? Math.max(...bn) : 0, hard: bh.length ? Math.max(...bh) : 0, marks: S.ordealMarks | 0})));
+    const asc = row(b, `<div class="fill"><b>${G.t('prestige.ascTitle')}</b><span class="sub">${G.t('prestige.ascSub')}</span><em class="pill num">▲ ${fmt(S.relics)} · ${S.prestige.ascensions}×</em></div>`);
+    asc.appendChild(btn(R && R.round >= 100 ? G.t('prestige.ascBtn') : G.t('prestige.ascReach'), R && R.round >= 100 ? 'buy' : 'ghost', () => {
+      const got = G.sim.ascend(S); if (got) { G.ui.toast(G.t('prestige.ascOk', {v: fmt(got)}), 'good'); G.ach.check(S); G.main.newRun(); G.ui.openSheet('prestige'); } else G.ui.toast(G.t('prestige.ascFail'), 'warn'); }));
     P.ascension.tree.forEach(n => { const lvl = (S.relicTree = S.relicTree || {})[n.id] | 0;
-      const r = row(b, `<div class="fill"><span>${n.nm}</span><span class="sub">+${Math.round(n.per * 100) / (n.k === 'startRound' ? 100 : 1)}${n.k === 'startRound' ? ' rounds' : '%'}/lv · ${n.k}</span><em class="pill">Lv ${lvl}</em></div>`);
-      r.appendChild(btn('▲ ' + fmt(BN.from(n.base * Math.pow(2, lvl))), 'sm', () => { G.sim.buyRelic(S, n.id) ? G.ui.openSheet('prestige') : G.ui.toast('Need Relics / maxed', 'warn'); })); });
+      const r = row(b, `<div class="fill"><span>${n.nm}</span><span class="sub">${G.t(n.k === 'startRound' ? 'prestige.perLvRounds' : 'prestige.perLvPct', {v: Math.round(n.per * 100) / (n.k === 'startRound' ? 100 : 1), k: n.k})}</span><em class="pill">${G.t('common.lv', {n: lvl})}</em></div>`);
+      r.appendChild(btn('▲ ' + fmt(BN.from(n.base * Math.pow(2, lvl))), 'sm', () => { G.sim.buyRelic(S, n.id) ? G.ui.openSheet('prestige') : G.ui.toast(G.t('prestige.relicFail'), 'warn'); })); });
     const T = P.transcendence;
-    const tr = row(b, `<div class="fill"><b>Transcendence</b><span class="sub">${T.trigger.relics} Relics + ${T.trigger.ascensions} Ascensions → Aether (resets relic tree)</span><em class="pill num">✧ ${S.aether | 0} · ${S.prestige.transcendences}×</em></div>`);
-    tr.appendChild(btn('TRANSCEND', BN.toNum(S.relics) >= T.trigger.relics && S.prestige.ascensions >= T.trigger.ascensions ? 'buy' : 'ghost', () => {
-      const got = G.sim.transcend(S); if (got) { G.ui.toast('Transcended! +' + got + ' Aether', 'good'); G.main.newRun(); G.ui.openSheet('prestige'); } else G.ui.toast('Not yet — ' + T.trigger.relics + ' relics + ' + T.trigger.ascensions + ' ascensions', 'warn'); }));
+    const tr = row(b, `<div class="fill"><b>${G.t('prestige.transTitle')}</b><span class="sub">${G.t('prestige.transSub', {relics: T.trigger.relics, asc: T.trigger.ascensions})}</span><em class="pill num">✧ ${S.aether | 0} · ${S.prestige.transcendences}×</em></div>`);
+    tr.appendChild(btn(G.t('prestige.transBtn'), BN.toNum(S.relics) >= T.trigger.relics && S.prestige.ascensions >= T.trigger.ascensions ? 'buy' : 'ghost', () => {
+      const got = G.sim.transcend(S); if (got) { G.ui.toast(G.t('prestige.transOk', {v: got}), 'good'); G.main.newRun(); G.ui.openSheet('prestige'); } else G.ui.toast(G.t('prestige.transFail', {relics: T.trigger.relics, asc: T.trigger.ascensions}), 'warn'); }));
     T.tree.forEach(n => { const lvl = (S.aetherTree = S.aetherTree || {})[n.id] | 0;
-      const r = row(b, `<div class="fill"><span>${n.nm}</span><span class="sub">${n.k}</span><em class="pill">Lv ${lvl}</em></div>`);
-      r.appendChild(btn('✧ ' + Math.ceil(n.base * Math.pow(2, lvl)), 'sm', () => { G.sim.buyAether(S, n.id) ? G.ui.openSheet('prestige') : G.ui.toast('Need Aether', 'warn'); })); });
-    row(b, `<div class="fill"><b>Convergence</b><span class="sub">${P.convergence ? '100 Aether + 5 Transcendences — resets all but cosmetics' : ''}</span><em class="pill">${S.prestige.convergences}×</em></div>`);
-    row(b, `<div class="fill"><b>Restricted mode</b><span class="sub">pure skill, zero meta — the wallet-immune Ranked ruleset</span></div>`)
-      .appendChild(btn('Start Restricted Run', 'ghost', () => { G.main.newRun({restricted: 1}); $('#sheet').classList.remove('on'); })); },
+      const r = row(b, `<div class="fill"><span>${n.nm}</span><span class="sub">${n.k}</span><em class="pill">${G.t('common.lv', {n: lvl})}</em></div>`);
+      r.appendChild(btn('✧ ' + Math.ceil(n.base * Math.pow(2, lvl)), 'sm', () => { G.sim.buyAether(S, n.id) ? G.ui.openSheet('prestige') : G.ui.toast(G.t('prestige.aetherFail'), 'warn'); })); });
+    row(b, `<div class="fill"><b>${G.t('prestige.convTitle')}</b><span class="sub">${P.convergence ? G.t('prestige.convSub') : ''}</span><em class="pill">${S.prestige.convergences}×</em></div>`);
+    row(b, `<div class="fill"><b>${G.t('prestige.restrictTitle')}</b><span class="sub">${G.t('prestige.restrictSub')}</span></div>`)
+      .appendChild(btn(G.t('prestige.restrictBtn'), 'ghost', () => { G.main.newRun({restricted: 1}); $('#sheet').classList.remove('on'); })); },
   /* ---------- STORE — Aurora luminism · previews · rarity frames · cache w/ pity · motes ---------- */
   store(b) { const S = G.S;
-    b.appendChild(h('div', 'card lux', `<div style="text-align:center;font-family:Georgia,serif;font-variant:small-caps;letter-spacing:.14em;color:var(--gilt);font-size:15px">“Money never buys power.”</div>`));
-    b.appendChild(h('div', 'card sub num', `△ ${S.prisms} Prisms · ◈ ${S.glyphShards} Shards · ✦ Motes ${S.motes | 0} · 🗝 Cache keys ${(S.liveops.cacheKeys | 0)}`));
-    const cache = row(b, `<div class="fill"><b>Arcane Cache</b><span class="sub num">pity — epic ${(S.liveops.cachePity && S.liveops.cachePity.epic) | 0}/${D().store.caches.pity.epic} · legendary ${(S.liveops.cachePity && S.liveops.cachePity.legendary) | 0}/${D().store.caches.pity.legendary} · dupes → motes</span></div>`, 'bE');
-    cache.appendChild(btn('Open (key / 150△)', 'buy lux', () => { const r = G.liveops.cacheOpen(S);
-      if (!r) return G.ui.toast('Need a key or 150△', 'warn');
-      G.ui.toast(r.item ? '✨ ' + r.tier.toUpperCase() + ' — ' + r.item.nm + '!' : '✦ ' + r.tier + ' dupe → motes', 'big'); G.bus.emit('cosmetics'); G.ui.openSheet('store'); }));
+    b.appendChild(h('div', 'card lux', `<div style="text-align:center;font-family:Georgia,serif;font-variant:small-caps;letter-spacing:.14em;color:var(--gilt);font-size:15px">${G.t('store.motto')}</div>`));
+    b.appendChild(h('div', 'card sub num', G.t('store.wallet', {prisms: S.prisms, shards: S.glyphShards, motes: S.motes | 0, keys: S.liveops.cacheKeys | 0})));
+    const cache = row(b, `<div class="fill"><b>${G.t('store.cacheTitle')}</b><span class="sub num">${G.t('store.cacheSub', {ep: (S.liveops.cachePity && S.liveops.cachePity.epic) | 0, epMax: D().store.caches.pity.epic, leg: (S.liveops.cachePity && S.liveops.cachePity.legendary) | 0, legMax: D().store.caches.pity.legendary})}</span></div>`, 'bE');
+    cache.appendChild(btn(G.t('store.cacheBtn'), 'buy lux', () => { const r = G.liveops.cacheOpen(S);
+      if (!r) return G.ui.toast(G.t('store.cacheNeed'), 'warn');
+      G.ui.toast(r.item ? G.t('store.cacheHit', {rar: r.tier.toUpperCase(), name: r.item.nm}) : G.t('store.cacheDupe', {rar: r.tier}), 'big'); G.bus.emit('cosmetics'); G.ui.openSheet('store'); }));
     /* featured: weekly-seeded rotation of 8 (2 marked daily) */
     const wk = G.liveops ? G.liveops.weekKey() : 'w', rngF = G.mulberry(G.hash('featured' + wk));
     const seas = G.liveops ? G.liveops.season(S) : null;
     const seasonal = seas && seas.cosmetics && seas.cosmetics.items ? seas.cosmetics.items.map((nm, i) => ({id: 'season' + seas.s + 'skin' + (i + 1), nm, cat: i === 0 ? 'spireSkin' : i === 1 ? 'towerSkin' : 'uiTheme', tier: 'epic', seasonal: 1})) : [];
     const all = D().cosmetics.catalog.concat(seasonal);
     const feat = all.slice().sort(() => rngF() - .5).slice(0, 8);
-    row(b, `<div class="fill"><b>FEATURED</b><span class="sub">weekly rotation · Returns-tagged</span></div>`);
+    row(b, `<div class="fill"><b>${G.t('store.featured')}</b><span class="sub">${G.t('store.featuredSub')}</span></div>`);
     feat.concat(all.filter(x => !feat.includes(x))).forEach(it => { const owned = S.cosmetics.owned.includes(it.id);
       const eqd = S.cosmetics.equipped[it.cat] === it.id;
       const price = (D().cosmetics.tiers[it.tier] || [400])[0];
-      const r = row(b, `<div class="fill"><b class="${rc(it.tier)}">${it.nm}${it.seasonal ? ' · S' + (seas ? seas.s : '') : ''}</b><span class="sub">${it.cat} · ${it.tier.toUpperCase()}${feat.includes(it) ? ' · FEATURED' : ''}${it.seasonal ? ' · Returns next year' : ''}</span></div>`, rb(it.tier) + ' lux');
-      const cv = h('canvas'); cv.width = cv.height = 44; cv.style.cssText = 'width:44px;height:44px;border-radius:9px;background:var(--bg2)';
+      const r = row(b, `<div class="fill"><b class="${rc(it.tier)}">${it.nm}${it.seasonal ? G.t('store.seasonTag', {s: seas ? seas.s : ''}) : ''}</b><span class="sub">${G.t('store.itemSub', {cat: it.cat, tier: it.tier.toUpperCase()})}${feat.includes(it) ? G.t('store.featuredTag') : ''}${it.seasonal ? G.t('store.returnsTag') : ''}</span></div>`, rb(it.tier) + ' lux');
+      const cv = h('canvas'); cv.width = cv.height = 88; cv.style.cssText = 'width:44px;height:44px;border-radius:9px;background:var(--bg2)';
       r.insertBefore(cv, r.firstChild);
-      try { const x = cv.getContext('2d');
-        if (it.cat === 'spireSkin' || it.cat === 'towerSkin') G.drawIcon(x, 'tower', 'pyre', 44, {el: it.tier === 'legendary' ? 'arcane' : 'ice'});
-        else G.drawIcon(x, 'cur', it.id, 44, {el: ({projectileFx: 'arcane', killFx: 'fire', mapTheme: 'void', uiTheme: 'storm'})[it.cat] || 'arcane'}); } catch (e) {}
-      if (owned) r.appendChild(btn(eqd ? 'Equipped ✓' : 'Equip', 'sm ' + (eqd ? 'ghost' : 'buy'), () => { equip(it); G.ui.openSheet('store'); }));
-      else { r.appendChild(btn('△ ' + price, 'sm buy lux', () => {
-          if (S.prisms < price) return G.ui.toast('Need Prisms — dailies, achievements, pass', 'warn');
+      try { const x = cv.getContext('2d'); x.scale(2, 2);                       // 2× bake = retina-crisp card
+        /* subject by category, then the REAL metallic rarity frame composited over (sweep 3.4/3.16) */
+        const els = ['fire', 'ice', 'storm', 'nature', 'void'], eh = els[(it.id.length + it.id.charCodeAt(0)) % 5];
+        if (it.cat === 'spireSkin') G.drawIcon(x, 'spire', 'spire', 34, {x: 5, y: 5, el: eh});
+        else if (it.cat === 'towerSkin') G.drawIcon(x, 'tower', 'pyre', 34, {x: 5, y: 5, el: eh});
+        else if (it.cat === 'familiarSkin') G.drawIcon(x, 'glyph', 'sum', 32, {x: 6, y: 6, el: eh});
+        else if (it.cat === 'killFx') G.drawIcon(x, 'glyph', 'nova', 32, {x: 6, y: 6, el: 'fire'});
+        else if (it.cat === 'projectileFx') G.drawIcon(x, 'glyph', 'beam', 32, {x: 6, y: 6, el: eh});
+        else if (it.cat === 'mapTheme') G.drawIcon(x, 'glyph', 'zone', 32, {x: 6, y: 6, el: 'void'});
+        else if (it.cat === 'uiTheme') G.drawIcon(x, 'reward', 'skin', 32, {x: 6, y: 6});
+        else if (it.cat === 'emote') G.drawIcon(x, 'reward', 'bubble', 32, {x: 6, y: 6});
+        else if (it.cat === 'nameplate') G.drawIcon(x, 'reward', 'frame', 32, {x: 6, y: 6});
+        else G.drawIcon(x, 'reward', 'gift', 32, {x: 6, y: 6});
+        G.drawIcon(x, 'rframe', ({common: 'C', rare: 'R', epic: 'E', legendary: 'L'})[it.tier] || 'C', 44); } catch (e) {}
+      if (owned) r.appendChild(btn(G.t(eqd ? 'common.equipped' : 'common.equip'), 'sm ' + (eqd ? 'ghost' : 'buy'), () => { equip(it); G.ui.openSheet('store'); }));
+      else { r.appendChild(btn(G.t('store.pricePrisms', {price}), 'sm buy lux', () => {
+          if (S.prisms < price) return G.ui.toast(G.t('store.needPrisms'), 'warn');
           S.prisms -= price; S.stats.prismSpent = (S.stats.prismSpent | 0) + price;
           S.cosmetics.owned.push(it.id); G.bus.emit('cosmetics'); G.ach.check(S); G.ui.openSheet('store'); }));
-        r.appendChild(btn('✦' + ({common: 120, rare: 260, epic: 520, legendary: 990})[it.tier], 'sm ghost', () => {
-          G.liveops.moteCraft(S, it.id) ? (G.bus.emit('cosmetics'), G.ui.openSheet('store')) : G.ui.toast('Need motes', 'warn'); })); } });
-    row(b, `<div class="fill"><b>Prism packs</b><span class="sub">competition build — every Prism is earnable free (LOCKED #7)</span></div>`)
-      .appendChild(btn('△ Packs', 'ghost', () => G.ui.toast('Competition build — every Prism is earnable free ✨'))); },
+        r.appendChild(btn(G.t('store.priceMotes', {price: ({common: 120, rare: 260, epic: 520, legendary: 990})[it.tier]}), 'sm ghost', () => {
+          G.liveops.moteCraft(S, it.id) ? (G.bus.emit('cosmetics'), G.ui.openSheet('store')) : G.ui.toast(G.t('store.needMotes'), 'warn'); })); } });
+    row(b, `<div class="fill"><b>${G.t('store.packsTitle')}</b><span class="sub">${G.t('store.packsSub')}</span></div>`)
+      .appendChild(btn(G.t('store.packsBtn'), 'ghost', () => G.ui.toast(G.t('store.packsToast')))); },
   /* ---------- EVENTS — season · episodes · LIVE events · pass track · dailies · tournament ---------- */
-  events(b) { const S = G.S, L = G.liveops; if (!L) { row(b, '<b>Season engine boots with the run.</b>'); return; }
+  events(b) { const S = G.S, L = G.liveops; if (!L) { row(b, G.t('events.bootNeeded')); return; }
     const se = L.season();
-    b.appendChild(h('div', 'card lux', `<b>${se.emoji} Season ${se.s} · ${se.nm}</b><span class="sub"> — week ${se.week}, Drop ${se.drop} · “The Long Night” continues in the Chronicle</span>`));
-    L.activeEvents().forEach(ev => { const r = row(b, `<div class="fill"><b>${ev.nm}${ev.live ? ' — LIVE' : ''}</b><span class="sub">${(D().eventTypes[ev.type] || {}).nm || ev.type} · wk${ev.wk} · pays ${ev.cur}${ev.live ? ' · +15% Essence drops NOW' : ''}</span></div>`, ev.live ? 'bR' : ''); });
+    b.appendChild(h('div', 'card lux', `<b>${G.t('events.seasonTitle', {emoji: G.ui.icoImg('season', se.s, 22), s: se.s, name: se.nm})}</b><span class="sub">${G.t('events.seasonSub', {week: se.week, drop: se.drop})}</span>`));
+    L.activeEvents().forEach(ev => { const r = row(b, `<div class="fill"><b>${G.ui.icoImg('event', ev.type, 18)} ${ev.nm}${ev.live ? G.t('events.live') : ''}</b><span class="sub">${G.t('events.eventSub', {type: (D().eventTypes[ev.type] || {}).nm || ev.type, wk: ev.wk, cur: ev.cur})}${ev.live ? G.t('events.liveBonus') : ''}</span></div>`, ev.live ? 'bR' : ''); });
     /* ---- §4 EVENT TOKENS — faucet: event dailies · sink: this shop · valve: leftovers → Mana ×2 ---- */
     L.evValve && L.evValve(S);
     const liveEv = L.activeEvents().find(e => e.live);
-    const tok = h('div', 'card sub num', `⬡ <b>${S.evTokens | 0}</b> Event Tokens`); tok.title = 'Earned from event dailies while an event is LIVE · spent in the event shop · leftovers convert to Mana ×2 when the event ends'; b.appendChild(tok);
-    if (liveEv) { b.appendChild(h('div', 'card sub', `<b>EVENT SHOP — ${liveEv.nm}</b> (closes with the event; tokens never strand)`));
-      [['embra', 'Embra Ashvow — event hero', 2000], ['voltra', 'Voltra Kess — event hero', 2000]].forEach(([hid, nm2, cost]) => {
+    const tok = h('div', 'card sub num', G.t('events.tokBal', {n: S.evTokens | 0})); tok.dataset.tipk = 'cur.event'; b.appendChild(tok);
+    if (liveEv) { b.appendChild(h('div', 'card sub', G.t('events.shopTitle', {name: liveEv.nm})));
+      [['embra', G.t('events.heroEmbra'), 2000], ['voltra', G.t('events.heroVoltra'), 2000]].forEach(([hid, nm2, cost]) => {
         const owned = !!(S.heroes.owned || {})[hid];
-        const r = row(b, `<div class="fill"><b>${nm2}</b><span class="sub">hero shards — permanent roster unlock</span></div>`, owned ? '' : 'bR');
-        r.appendChild(owned ? h('em', 'pill gold', 'OWNED') : btn('⬡ ' + cost, 'sm buy', () => { if ((S.evTokens | 0) < cost) return G.ui.toast('Need Event Tokens', 'warn');
-          S.evTokens -= cost; S.heroes.owned[hid] = 1; G.ui.toast(nm2.split(' — ')[0] + ' joins the roster!', 'good'); G.ui.openSheet('events'); })); });
-      const rb = row(b, `<div class="fill"><b>Surge Draught</b><span class="sub">next run +15% Essence (consumable)${S.liveops.evBuff ? ' · QUEUED' : ''}</span></div>`);
-      rb.appendChild(btn('⬡ 150', 'sm', () => { if ((S.evTokens | 0) < 150) return G.ui.toast('Need Event Tokens', 'warn');
-        if (S.liveops.evBuff) return G.ui.toast('Already queued for next run', 'warn');
-        S.evTokens -= 150; S.liveops.evBuff = 1; G.ui.toast('Surge Draught queued — next run +15% Essence', 'good'); G.ui.openSheet('events'); }));
-      const cs = row(b, `<div class="fill"><b>Frost Veil</b><span class="sub">event tower skin${S.cosmetics.owned.includes('frostveil') ? ' · OWNED' : ''}</span></div>`);
-      if (!S.cosmetics.owned.includes('frostveil')) cs.appendChild(btn('⬡ 600', 'sm', () => { if ((S.evTokens | 0) < 600) return G.ui.toast('Need Event Tokens', 'warn');
-        S.evTokens -= 600; S.cosmetics.owned.push('frostveil'); G.ui.toast('Frost Veil unlocked', 'good'); G.ui.openSheet('events'); })); }
+        const r = row(b, `<div class="fill"><b>${nm2}</b><span class="sub">${G.t('events.heroSub')}</span></div>`, owned ? '' : 'bR');
+        r.appendChild(owned ? h('em', 'pill gold', G.t('common.owned')) : btn('⬡ ' + cost, 'sm buy', () => { if ((S.evTokens | 0) < cost) return G.ui.toast(G.t('events.needTokens'), 'warn');
+          S.evTokens -= cost; S.heroes.owned[hid] = 1; G.ui.toast(G.t('events.heroJoins', {name: nm2.split(' — ')[0]}), 'good'); G.ui.openSheet('events'); })); });
+      const rb = row(b, `<div class="fill"><b>${G.t('events.draughtTitle')}</b><span class="sub">${G.t('events.draughtSub')}${S.liveops.evBuff ? G.t('common.queued') : ''}</span></div>`);
+      rb.appendChild(btn('⬡ 150', 'sm', () => { if ((S.evTokens | 0) < 150) return G.ui.toast(G.t('events.needTokens'), 'warn');
+        if (S.liveops.evBuff) return G.ui.toast(G.t('common.alreadyQueued'), 'warn');
+        S.evTokens -= 150; S.liveops.evBuff = 1; G.ui.toast(G.t('events.draughtGo'), 'good'); G.ui.openSheet('events'); }));
+      const cs = row(b, `<div class="fill"><b>${G.t('events.skinFrost')}</b><span class="sub">${G.t('events.skinFrostSub')}${S.cosmetics.owned.includes('frostveil') ? ' · ' + G.t('common.owned') : ''}</span></div>`);
+      if (!S.cosmetics.owned.includes('frostveil')) cs.appendChild(btn('⬡ 600', 'sm', () => { if ((S.evTokens | 0) < 600) return G.ui.toast(G.t('events.needTokens'), 'warn');
+        S.evTokens -= 600; S.cosmetics.owned.push('frostveil'); G.ui.toast(G.t('events.skinFrostGot'), 'good'); G.ui.openSheet('events'); })); }
     /* season pass — the real 50-tier track */
     const lvl = L.passLevel(), prem = !!S.liveops.premium;
-    const pr = row(b, `<div class="fill"><b>Season Pass · Lv ${lvl}/50</b>${bar(lvl / 50)}<span class="sub">+speed stacks are PERMANENT and also earnable free (§N)</span></div>`, 'lux bE');
-    if (!prem) pr.appendChild(btn('Premium 990△', 'gold', () => { G.liveops.buyPremium() ? G.ui.openSheet('events') : G.ui.toast('Need 990△ (earnable)', 'warn'); }));
+    const pr = row(b, `<div class="fill"><b>${G.t('events.passTitle', {lvl})}</b>${bar(lvl / 50)}<span class="sub">${G.t('events.passSub')}</span></div>`, 'lux bE');
+    if (!prem) pr.appendChild(btn(G.t('events.passPremium'), 'gold', () => { G.liveops.buyPremium() ? G.ui.openSheet('events') : G.ui.toast(G.t('events.passPremiumNeed'), 'warn'); }));
     for (let t = 1; t <= 50; t++) { const fr = L.passReward(t, false), pw = L.passReward(t, true);
       const fk = 'f' + se.s + ':' + t, pk = 'p' + se.s + ':' + t;
       if (!Object.keys(fr).length && !Object.keys(pw).length) continue;
-      const lbl = o => Object.keys(o).map(k => ({prisms: '△' + o.prisms, cacheKey: '🗝', speed: '+5%⚡', axp: 'AXP', cosmetic: '🎁', seasonSkin: '👑', essence: '◆'})[k] || k).join(' ');
-      const r = row(b, `<div class="fill"><span class="num">T${t}</span><span class="sub">free: ${lbl(fr) || '—'} · premium: ${lbl(pw) || '—'}</span></div>`, lvl >= t ? '' : 'locked');
-      if (Object.keys(fr).length) r.appendChild(btn(S.liveops.claimed[fk] ? '✓' : 'Claim', 'sm ' + (S.liveops.claimed[fk] ? 'ghost dis' : 'buy'), () => { L.claim(t, false) ? G.ui.openSheet('events') : G.ui.toast(lvl < t ? 'Reach pass Lv ' + t : 'Claimed', 'warn'); }));
-      if (Object.keys(pw).length) r.appendChild(btn(S.liveops.claimed[pk] ? '✓' : 'Premium', 'sm ' + (S.liveops.claimed[pk] ? 'ghost dis' : 'gold'), () => { L.claim(t, true) ? G.ui.openSheet('events') : G.ui.toast(!prem ? 'Premium pass needed' : lvl < t ? 'Reach pass Lv ' + t : 'Claimed', 'warn'); })); }
+      const RIC = (k2, i2) => G.ui.icoImg(k2, i2, 13);   // pass reward marks (sweep D4) — replaces emoji
+      const lbl = o => Object.keys(o).map(k => ({prisms: RIC('cur', 'prism') + o.prisms, cacheKey: RIC('reward', 'key'), cache: RIC('reward', 'key'),
+        speed: RIC('reward', 'speed') + '+5%', boost: RIC('reward', 'boost'), axp: RIC('reward', 'axp') + 'AXP', axpStack: RIC('reward', 'axp') + 'AXP',
+        cosmetic: RIC('reward', 'gift'), emote: RIC('reward', 'bubble'), trail: RIC('reward', 'trail'), skins: RIC('reward', 'skin'),
+        seasonSkin: RIC('reward', 'skin'), frame: RIC('reward', 'frame'), capstoneAura: RIC('reward', 'aura'), essence: RIC('cur', 'essence')})[k] || k).join(' ');
+      const r = row(b, `<div class="fill"><span class="num">T${t}</span><span class="sub">${G.t('events.tierRow', {free: lbl(fr) || '—', prem: lbl(pw) || '—'})}</span></div>`, lvl >= t ? '' : 'locked');
+      if (Object.keys(fr).length) r.appendChild(btn(S.liveops.claimed[fk] ? G.t('common.claimed') : G.t('common.claim'), 'sm ' + (S.liveops.claimed[fk] ? 'ghost dis' : 'buy'), () => { L.claim(t, false) ? G.ui.openSheet('events') : G.ui.toast(lvl < t ? G.t('events.tierReach', {n: t}) : G.t('events.alreadyClaimed'), 'warn'); }));
+      if (Object.keys(pw).length) r.appendChild(btn(S.liveops.claimed[pk] ? G.t('common.claimed') : G.t('events.passPremiumBtn'), 'sm ' + (S.liveops.claimed[pk] ? 'ghost dis' : 'gold'), () => { L.claim(t, true) ? G.ui.openSheet('events') : G.ui.toast(!prem ? G.t('events.passPremiumMissing') : lvl < t ? G.t('events.tierReach', {n: t}) : G.t('events.alreadyClaimed'), 'warn'); })); }
     /* dailies — REAL enforced runs */
     const wkst = L.weekStatus(S);
-    row(b, `<div class="fill"><b>Dailies</b><span class="sub num">${S.stats.dailies | 0} lifetime · weekly gauntlet ${wkst.done}/7${wkst.claimed ? ' · capstone ✓' : ''}</span>${bar(wkst.done / 7)}</div>`);
+    row(b, `<div class="fill"><b>${G.t('events.dailiesTitle')}</b><span class="sub num">${G.t('events.dailiesSub', {n: S.stats.dailies | 0, done: wkst.done})}${wkst.claimed ? G.t('events.dailiesCapstone') : ''}</span>${bar(wkst.done / 7)}</div>`);
     L.dailies().forEach(d => { const done = L.dailyDone(d.idx);
-      const r = row(b, `<div class="fill"><b>${done ? '✅' : '◇'} ${d.tier.toUpperCase()} — ${d.nm}</b><span class="sub">reach R${d.goal} with the mod active · +${d.reward.prisms}△${d.reward.shards ? ' +' + d.reward.shards + '◈' : ''}</span></div>`, done ? 'bU' : '');
-      if (!done) r.appendChild(btn('Start', 'sm buy', () => {
+      const r = row(b, `<div class="fill"><b>${done ? '✅' : '◇'} ${d.tier.toUpperCase()} — ${d.nm}</b><span class="sub">${G.t('events.dailyRow', {goal: d.goal, prisms: d.reward.prisms})}${d.reward.shards ? G.t('events.dailyRowShards', {shards: d.reward.shards}) : ''}</span></div>`, done ? 'bU' : '');
+      if (!done) r.appendChild(btn(G.t('common.start'), 'sm buy', () => {
         const ids = d.tier === 'hard' ? L.dailies().map(x => x.id) : d.tier === 'med' ? L.dailies().slice(0, 2).map(x => x.id) : [d.id];
-        G.main.newRun({daily: {idx: d.idx, ids, goal: d.goal}}); G.ui.toast('Daily: ' + d.nm + ' — reach R' + d.goal); $('#sheet').classList.remove('on'); })); });
+        G.main.newRun({daily: {idx: d.idx, ids, goal: d.goal}}); G.ui.toast(G.t('events.dailyStart', {name: d.nm, goal: d.goal})); $('#sheet').classList.remove('on'); })); });
     /* tournament — async ghost bracket, Restricted ruleset (wallet-immune) */
     const t = L.nextTournament(), live = /Live/.test(t), tkey = 'trn' + (G.liveops.weekKey()) + (new Date(G.gameNow()).getDay());
-    const tr = row(b, `<div class="fill"><b>Tournament</b><span class="sub">Wed/Sat 24h · ghost bracket · league ${L.league(S)} · ${t}</span></div>`, live ? 'bR' : '');
-    if (live && !S.liveops[tkey]) tr.appendChild(btn('Enter (best Restricted)', 'buy', () => {
+    const tr = row(b, `<div class="fill"><b>${G.t('events.tourTitle')}</b><span class="sub">${G.t('events.tourSub', {league: L.league(S), status: t})}</span></div>`, live ? 'bR' : '');
+    if (live && !S.liveops[tkey]) tr.appendChild(btn(G.t('events.tourEnter'), 'buy', () => {
       S.liveops[tkey] = 1; const best = Object.values(S.tiers.best); const you = best.length ? Math.max(...best) : 0;
       const rngT = G.mulberry(G.hash(tkey)); let beat = 0; const N = 15;
       for (let i = 0; i < N; i++) if (you >= Math.round(you * (0.55 + rngT() * .9)) ) beat++;
       const pct = Math.round(100 * (1 - beat / N)), sc = beat >= 14 ? 4 : beat >= 11 ? 3 : beat >= 7 ? 2 : 1;
       const rw = D().tournaments.rewards.absolute[sc - 1]; S.prisms += rw.prisms; if (rw.shards) { S.shards += rw.shards; S.stats.shardsLife = (S.stats.shardsLife | 0) + rw.shards; }
       S.medals = (S.medals | 0) + sc; if (pct <= 10) S.stats.top10 = 1;
-      G.ach.check(S); G.ui.toast('🏁 Bracket: top ' + pct + '% — +' + rw.prisms + '△', 'big'); G.ui.openSheet('events'); }));
-    else if (live) tr.appendChild(btn('Entered ✓', 'sm ghost dis', () => {})); },
+      G.ach.check(S); G.ui.toast(G.t('events.tourResult', {pct, prisms: rw.prisms}), 'big'); G.ui.openSheet('events'); }));
+    else if (live) tr.appendChild(btn(G.t('events.tourEntered'), 'sm ghost dis', () => {})); },
   /* ---------- SETTINGS ---------- */
   settings(b) { const S = G.S;
-    const themes = row(b, '<div class="fill"><b>Theme</b><span class="sub">Aurora Veil is the authored default</span></div>');
+    const themes = row(b, `<div class="fill"><b>${G.t('settings.themeTitle')}</b><span class="sub">${G.t('settings.themeSub')}</span></div>`);
     Object.entries(G.C.themes).forEach(([id, th]) => themes.appendChild(btn(th.name, 'sm ' + (S.opt.theme === id ? 'buy' : 'ghost'),
       () => { S.opt.theme = id; G.applyTheme(); G.ui.openSheet('settings'); })));
-    const q = row(b, '<div class="fill"><b>Quality</b></div>');
-    ['auto', 'high', 'med', 'low'].forEach(v => q.appendChild(btn(v, 'sm ' + (S.opt.quality === v ? 'buy' : 'ghost'), () => { S.opt.quality = v; G.ui.openSheet('settings'); })));
-    const n = row(b, '<div class="fill"><b>Numbers</b></div>');
-    ['letters', 'sci'].forEach(v => n.appendChild(btn(v, 'sm ' + (S.opt.notation === v ? 'buy' : 'ghost'), () => { S.opt.notation = v; G.ui.openSheet('settings'); })));
-    const rm = row(b, '<div class="fill"><b>Reduce motion</b><span class="sub">disables shake/slow-mo/pulses</span></div>');
-    rm.appendChild(btn(S.opt.reduceMotion ? 'ON' : 'OFF', 'sm ' + (S.opt.reduceMotion ? 'buy' : 'ghost'), () => { S.opt.reduceMotion = S.opt.reduceMotion ? 0 : 1;
+    const q = row(b, `<div class="fill"><b>${G.t('settings.qualityTitle')}</b></div>`);
+    ['auto', 'high', 'med', 'low'].forEach(v => q.appendChild(btn(G.t('settings.q' + v[0].toUpperCase() + v.slice(1)), 'sm ' + (S.opt.quality === v ? 'buy' : 'ghost'), () => { S.opt.quality = v; G.ui.openSheet('settings'); })));
+    const n = row(b, `<div class="fill"><b>${G.t('settings.numbersTitle')}</b></div>`);
+    ['letters', 'sci'].forEach(v => n.appendChild(btn(G.t(v === 'letters' ? 'settings.numLetters' : 'settings.numSci'), 'sm ' + (S.opt.notation === v ? 'buy' : 'ghost'), () => { S.opt.notation = v; G.ui.openSheet('settings'); })));
+    const rm = row(b, `<div class="fill"><b>${G.t('settings.reduceMotionTitle')}</b><span class="sub">${G.t('settings.reduceMotionSub')}</span></div>`);
+    rm.appendChild(btn(G.t(S.opt.reduceMotion ? 'common.on' : 'common.off'), 'sm ' + (S.opt.reduceMotion ? 'buy' : 'ghost'), () => { S.opt.reduceMotion = S.opt.reduceMotion ? 0 : 1;
       S.opt.rmTouched = 1; // explicit choice freezes OS-following (see G.main.boot)
       document.body.classList.toggle('reduceMotion', !!S.opt.reduceMotion); G.ui.openSheet('settings'); }));
-    const stk = row(b, '<div class="fill"><b>Merge confirm</b><span class="sub">dropping a same-type tower onto another (stacks to 5)</span></div>');
-    [['dialog', 'Ask + toggle'], ['confirm', 'Just confirm'], ['auto', 'Auto']].forEach(([v, nm]) => stk.appendChild(btn(nm, 'sm ' + ((S.opt.stackConfirm || 'dialog') === v ? 'buy' : 'ghost'),
+    const stk = row(b, `<div class="fill"><b>${G.t('settings.stackTitle')}</b><span class="sub">${G.t('settings.stackSub')}</span></div>`);
+    [['dialog', G.t('settings.stackAsk')], ['confirm', G.t('settings.stackConfirm')], ['auto', G.t('settings.stackAuto')]].forEach(([v, nm]) => stk.appendChild(btn(nm, 'sm ' + ((S.opt.stackConfirm || 'dialog') === v ? 'buy' : 'ghost'),
       () => { S.opt.stackConfirm = v; G.ui.openSheet('settings'); })));
-    const acct = row(b, '<div class="fill"><b>Account</b><span class="sub">Guest (default) · link = local profile tag, never blocks (LOCKED #7)</span></div>');
-    ['Apple', 'Google', 'Email'].forEach(p => acct.appendChild(btn(p, 'sm ghost', () => { S.provider = p; G.ui.toast('Linked ' + p + ' (local profile)'); })));
-    const sv = row(b, '<div class="fill"><b>Save</b></div>');
-    sv.appendChild(btn('Save now', 'sm', () => { G.save.write(); G.ui.toast('Saved'); }));
-    sv.appendChild(btn('Export', 'sm ghost', () => { G.ui.modal('Save export', '<textarea style="width:100%;height:120px">' + G.save.export() + '</textarea>'); }));
-    sv.appendChild(btn('Import', 'sm ghost', () => { const ta = h('textarea'); ta.style.cssText = 'width:100%;height:120px';
-      G.ui.modal('Paste save export', ta, [{nm: 'Import', cls: 'buy', fn: () => { G.save.import(ta.value) ? location.reload() : G.ui.toast('Invalid save', 'warn'); }}, {nm: 'Cancel'}]); }));
-    sv.appendChild(btn('Wipe', 'sm danger', () => { G.ui.modal('Wipe save?', 'This deletes ALL progress on this device. Export first if unsure.',
-      [{nm: 'WIPE EVERYTHING', cls: 'danger', fn: () => { G.save.wipe(); location.reload(); }}, {nm: 'Keep playing', cls: 'buy'}]); }));
-    const cl = row(b, `<div class="fill"><b>Crash Log</b><span class="sub num">${(G.crashlog ? G.crashlog.all() : []).length} local entries · never sent anywhere</span></div>`);
-    cl.appendChild(btn('Export', 'sm ghost', () => { const ta = h('textarea'); ta.style.cssText = 'width:100%;height:110px';
-      ta.value = G.crashlog ? G.crashlog.export() : '[]'; ta.readOnly = true; G.ui.modal('Crash log export', ta, [{nm: 'Close'}]); }));
-    cl.appendChild(btn('Clear', 'sm ghost', () => { if (G.crashlog) G.crashlog.clear(); G.ui.openSheet('settings'); })); },
+    const acct = row(b, `<div class="fill"><b>${G.t('settings.accountTitle')}</b><span class="sub">${G.t('settings.accountSub')}</span></div>`);
+    ['Apple', 'Google', 'Email'].forEach(p => acct.appendChild(btn(G.t('settings.provider' + p), 'sm ghost', () => { S.provider = p; G.ui.toast(G.t('settings.linked', {provider: G.t('settings.provider' + p)})); })));
+    const sv = row(b, `<div class="fill"><b>${G.t('settings.saveTitle')}</b></div>`);
+    sv.appendChild(btn(G.t('settings.saveNow'), 'sm', () => { G.save.write(); G.ui.toast(G.t('settings.saved')); }));
+    sv.appendChild(btn(G.t('settings.export'), 'sm ghost', () => { G.ui.modal(G.t('settings.exportTitle'), '<textarea style="width:100%;height:120px">' + G.save.export() + '</textarea>'); }));
+    sv.appendChild(btn(G.t('settings.import'), 'sm ghost', () => { const ta = h('textarea'); ta.style.cssText = 'width:100%;height:120px';
+      G.ui.modal(G.t('settings.importTitle'), ta, [{nm: G.t('settings.importGo'), cls: 'buy', fn: () => { G.save.import(ta.value) ? location.reload() : G.ui.toast(G.t('settings.importBad'), 'warn'); }}, {nm: G.t('common.cancel')}]); }));
+    sv.appendChild(btn(G.t('settings.wipe'), 'sm danger', () => { G.ui.modal(G.t('settings.wipeTitle'), G.t('settings.wipeBody'),
+      [{nm: G.t('settings.wipeConfirm'), cls: 'danger', fn: () => { G.save.wipe(); location.reload(); }}, {nm: G.t('settings.wipeKeep'), cls: 'buy'}]); }));
+    const cl = row(b, `<div class="fill"><b>${G.t('settings.crashTitle')}</b><span class="sub num">${G.t('settings.crashSub', {n: (G.crashlog ? G.crashlog.all() : []).length})}</span></div>`);
+    cl.appendChild(btn(G.t('settings.export'), 'sm ghost', () => { const ta = h('textarea'); ta.style.cssText = 'width:100%;height:110px';
+      ta.value = G.crashlog ? G.crashlog.export() : '[]'; ta.readOnly = true; G.ui.modal(G.t('settings.crashExportTitle'), ta, [{nm: G.t('common.close')}]); }));
+    cl.appendChild(btn(G.t('settings.crashClear'), 'sm ghost', () => { if (G.crashlog) G.crashlog.clear(); G.ui.openSheet('settings'); })); },
   /* ---------- SOCIAL — local-sim guild/duo/board/friends/gifts/replays (LOCKED #7) ---------- */
   social(b) { const S = G.S, soc = G.social;
     const wkKills = soc.weekKills(S);
-    row(b, `<div class="fill"><b>Guild — ${soc.guild.nm}</b><span class="sub num">this week: you ${fmt(BN.from(wkKills))} kills · weekly chest at #1</span><em class="pill">you: #${soc.rank(S)}</em></div>`);
+    row(b, `<div class="fill"><b>${G.t('social.guildTitle', {name: soc.guild.nm})}</b><span class="sub num">${G.t('social.guildSub', {kills: fmt(BN.from(wkKills))})}</span><em class="pill">${G.t('social.guildRank', {rank: soc.rank(S)})}</em></div>`);
     /* ---- §4 GUILD CREDITS — faucets: daily donate 20 · guild-boss (duo) 75 · weekly 200 ---- */
-    const gc = h('div', 'card sub num', `▣ <b>${S.guildCr | 0}</b> Guild Credits`); gc.title = 'Earned from guild activity (donate, guild boss, weekly mission) · spent in the guild shop'; b.appendChild(gc);
+    const gc = h('div', 'card sub num', G.t('social.credBal', {n: S.guildCr | 0})); gc.dataset.tipk = 'cur.guild'; b.appendChild(gc);
     const dk2 = G.liveops ? G.liveops.dayKey() : 0, wk2 = Math.floor(G.gameNow() / (7 * 864e5));
-    const don = row(b, `<div class="fill"><b>Daily donation</b><span class="sub">pitch in — +20 ▣ once a day${S.liveops.donateDay === dk2 ? ' · DONE today' : ''}</span></div>`);
-    if (S.liveops.donateDay !== dk2) don.appendChild(btn('Donate +20▣', 'sm buy', () => { S.liveops.donateDay = dk2; S.guildCr = (S.guildCr | 0) + 20; G.ui.toast('+20 Guild Credits', 'good'); G.ui.openSheet('social'); }));
-    if (soc.isTop(S)) { S.stats.guildtop = 1; const wr = row(b, `<div class="fill"><b>👑 Top contributor this week!</b><span class="sub">weekly mission chest — +200 ▣${S.liveops.wkChest === wk2 ? ' · CLAIMED' : ''}</span></div>`, 'bL');
-      if (S.liveops.wkChest !== wk2) wr.appendChild(btn('Claim +200▣', 'sm gold', () => { S.liveops.wkChest = wk2; S.guildCr = (S.guildCr | 0) + 200; G.ui.toast('+200 Guild Credits — weekly mission', 'good'); G.ui.openSheet('social'); })); }
-    const duo = row(b, '<div class="fill"><b>Duo co-op</b><span class="sub">shared boss-HP raids (local-sim) — win pays +75 ▣ · odds scale with your real best round</span></div>');
-    duo.appendChild(btn('Run duo raid', 'buy', () => { const r = soc.duoRaid(S); if (r.win) { S.stats.duowin = 1; S.guildCr = (S.guildCr | 0) + 75; G.ach.check(S); }
-      G.ui.toast(r.win ? '⚔ Raid cleared with ' + r.ally + '! +' + r.prisms + '△ +75▣' : 'So close — ' + r.ally + ' says gg'); G.ui.openSheet('social'); }));
+    const don = row(b, `<div class="fill"><b>${G.t('social.donateTitle')}</b><span class="sub">${G.t('social.donateSub')}${S.liveops.donateDay === dk2 ? G.t('social.doneToday') : ''}</span></div>`);
+    if (S.liveops.donateDay !== dk2) don.appendChild(btn(G.t('social.donateBtn'), 'sm buy', () => { S.liveops.donateDay = dk2; S.guildCr = (S.guildCr | 0) + 20; G.ui.toast(G.t('social.donateGot'), 'good'); G.ui.openSheet('social'); }));
+    if (soc.isTop(S)) { S.stats.guildtop = 1; const wr = row(b, `<div class="fill"><b>${G.t('social.topContributor')}</b><span class="sub">${G.t('social.weeklySub')}${S.liveops.wkChest === wk2 ? G.t('common.claimedTag') : ''}</span></div>`, 'bL');
+      if (S.liveops.wkChest !== wk2) wr.appendChild(btn(G.t('social.weeklyBtn'), 'sm gold', () => { S.liveops.wkChest = wk2; S.guildCr = (S.guildCr | 0) + 200; G.ui.toast(G.t('social.weeklyGot'), 'good'); G.ui.openSheet('social'); })); }
+    const duo = row(b, `<div class="fill"><b>${G.t('social.duoTitle')}</b><span class="sub">${G.t('social.duoSub')}</span></div>`);
+    duo.appendChild(btn(G.t('social.duoBtn'), 'buy', () => { const r = soc.duoRaid(S); if (r.win) { S.stats.duowin = 1; S.guildCr = (S.guildCr | 0) + 75; G.ach.check(S); }
+      G.ui.toast(r.win ? G.t('social.duoWin', {ally: r.ally, prisms: r.prisms}) : G.t('social.duoLose', {ally: r.ally})); G.ui.openSheet('social'); }));
     /* ---- guild shop: 2 exclusive heroes · capped tech · consumable ---- */
-    [['thorne', 'Thorne Duskmantle — guild hero', 2500], ['lyra', 'Lyra Meadowlight — guild hero', 2500]].forEach(([hid, nm2, cost]) => {
+    [['thorne', G.t('social.heroThorne'), 2500], ['lyra', G.t('social.heroLyra'), 2500]].forEach(([hid, nm2, cost]) => {
       const owned = !!(S.heroes.owned || {})[hid];
-      const r = row(b, `<div class="fill"><b>${nm2}</b><span class="sub">guild-exclusive roster unlock</span></div>`);
-      r.appendChild(owned ? h('em', 'pill gold', 'OWNED') : btn('▣ ' + cost, 'sm buy', () => { if ((S.guildCr | 0) < cost) return G.ui.toast('Need Guild Credits', 'warn');
-        S.guildCr -= cost; S.heroes.owned[hid] = 1; G.ui.toast(nm2.split(' — ')[0] + ' joins the roster!', 'good'); G.ui.openSheet('social'); })); });
-    [['mana', 'Guild tech: Mana yield', '+5% Mana/level', 500, 4], ['off', 'Guild tech: Night watch', '+30min offline cap/level', 1500, 2]].forEach(([k, nm2, d2, base, cap]) => {
+      const r = row(b, `<div class="fill"><b>${nm2}</b><span class="sub">${G.t('social.heroSub')}</span></div>`);
+      r.appendChild(owned ? h('em', 'pill gold', G.t('common.owned')) : btn('▣ ' + cost, 'sm buy', () => { if ((S.guildCr | 0) < cost) return G.ui.toast(G.t('social.needCreds'), 'warn');
+        S.guildCr -= cost; S.heroes.owned[hid] = 1; G.ui.toast(G.t('events.heroJoins', {name: nm2.split(' — ')[0]}), 'good'); G.ui.openSheet('social'); })); });
+    [['mana', G.t('social.techMana'), G.t('social.techManaSub'), 500, 4], ['off', G.t('social.techOff'), G.t('social.techOffSub'), 1500, 2]].forEach(([k, nm2, d2, base, cap]) => {
       const lv2 = (S.guildTech && S.guildTech[k]) | 0, cost = base * Math.pow(2, lv2);
-      const r = row(b, `<div class="fill"><b>${nm2} ${lv2}/${cap}</b><span class="sub">${d2} — capped account buff, never combat power</span></div>`);
-      if (lv2 < cap) r.appendChild(btn('▣ ' + cost, 'sm', () => { if ((S.guildCr | 0) < cost) return G.ui.toast('Need Guild Credits', 'warn');
+      const r = row(b, `<div class="fill"><b>${nm2} ${lv2}/${cap}</b><span class="sub">${d2}${G.t('social.techCap')}</span></div>`);
+      if (lv2 < cap) r.appendChild(btn('▣ ' + cost, 'sm', () => { if ((S.guildCr | 0) < cost) return G.ui.toast(G.t('social.needCreds'), 'warn');
         S.guildTech = S.guildTech || {}; S.guildCr -= cost; S.guildTech[k] = lv2 + 1; G.ui.toast(nm2 + ' → ' + (lv2 + 1), 'good'); G.ui.openSheet('social'); })); });
-    const gb = row(b, `<div class="fill"><b>Banner Draught</b><span class="sub">next run +10% damage (consumable)${S.liveops.gldBuff ? ' · QUEUED' : ''}</span></div>`);
-    gb.appendChild(btn('▣ 100', 'sm', () => { if ((S.guildCr | 0) < 100) return G.ui.toast('Need Guild Credits', 'warn');
-      if (S.liveops.gldBuff) return G.ui.toast('Already queued for next run', 'warn');
-      S.guildCr -= 100; S.liveops.gldBuff = 1; G.ui.toast('Banner Draught queued — next run +10% damage', 'good'); G.ui.openSheet('social'); }));
-    soc.guild.members.slice(0, 6).forEach(m => row(b, `<div class="fill"><span>${m.nm}</span><em class="pill num">${fmt(m.score)} pts</em></div>`));
-    const fr = row(b, `<div class="fill"><b>Friends (${(S.stats.friends | 0)})</b><span class="sub">gifts sent today: ${soc.giftsToday(S)}/5 (+5△ back each)</span></div>`);
-    fr.appendChild(btn('Add friend', 'sm', () => { if ((S.stats.friends | 0) < 10) { S.stats.friends = (S.stats.friends | 0) + 1; G.ach.check(S); } G.ui.openSheet('social'); }));
-    fr.appendChild(btn('Send gift', 'sm ghost', () => { const g = soc.gift(S); G.ui.toast(g ? '🎁 sent — +5△ returned' : 'Daily gift cap reached', g ? 'good' : 'warn'); G.ui.openSheet('social'); }));
-    const rp = row(b, `<div class="fill"><b>Replays</b><span class="sub">watch a ghost's run summary · rated ${(S.stats.replays | 0)}</span></div>`);
-    rp.appendChild(btn('Watch + rate', 'sm', () => { const g = soc.replay(S);
-      G.ui.modal('Replay — ' + g.nm, `<div class="wa-row"><span>Tier</span><b>T${g.tier}</b></div><div class="wa-row"><span>Reached</span><b class="num">R${g.round}</b></div><div class="wa-row"><span>Build</span><b>${g.build}</b></div>`,
-        [{nm: '👍 Rate', cls: 'buy', fn: () => { S.stats.replays = (S.stats.replays | 0) + 1; G.ach.check(S); }}, {nm: 'Close'}]); }));
-    row(b, '<div class="fill"><b>Leaderboard (ghosts)</b></div>');
-    soc.board(S).forEach((g, i) => row(b, `<div class="fill"><span>#${i + 1} ${g.nm}${g.you ? ' — YOU' : ''}</span><em class="pill num">R${g.round}</em></div>`, g.you ? 'bR' : '')); }
+    const gb = row(b, `<div class="fill"><b>${G.t('social.draughtTitle')}</b><span class="sub">${G.t('social.draughtSub')}${S.liveops.gldBuff ? G.t('common.queued') : ''}</span></div>`);
+    gb.appendChild(btn('▣ 100', 'sm', () => { if ((S.guildCr | 0) < 100) return G.ui.toast(G.t('social.needCreds'), 'warn');
+      if (S.liveops.gldBuff) return G.ui.toast(G.t('common.alreadyQueued'), 'warn');
+      S.guildCr -= 100; S.liveops.gldBuff = 1; G.ui.toast(G.t('social.draughtGo'), 'good'); G.ui.openSheet('social'); }));
+    soc.guild.members.slice(0, 6).forEach(m => row(b, `<div class="fill"><span>${m.nm}</span><em class="pill num">${G.t('social.memberPts', {score: fmt(m.score)})}</em></div>`));
+    const fr = row(b, `<div class="fill"><b>${G.t('social.friendsTitle', {n: S.stats.friends | 0})}</b><span class="sub">${G.t('social.friendsSub', {sent: soc.giftsToday(S)})}</span></div>`);
+    fr.appendChild(btn(G.t('social.addFriend'), 'sm', () => { if ((S.stats.friends | 0) < 10) { S.stats.friends = (S.stats.friends | 0) + 1; G.ach.check(S); } G.ui.openSheet('social'); }));
+    fr.appendChild(btn(G.t('social.sendGift'), 'sm ghost', () => { const g = soc.gift(S); G.ui.toast(g ? G.t('social.giftSent') : G.t('social.giftCap'), g ? 'good' : 'warn'); G.ui.openSheet('social'); }));
+    const rp = row(b, `<div class="fill"><b>${G.t('social.replaysTitle')}</b><span class="sub">${G.t('social.replaysSub', {n: S.stats.replays | 0})}</span></div>`);
+    rp.appendChild(btn(G.t('social.replayWatch'), 'sm', () => { const g = soc.replay(S);
+      G.ui.modal(G.t('social.replayTitle', {name: g.nm}), `<div class="wa-row"><span>${G.t('social.replayTier')}</span><b>T${g.tier}</b></div><div class="wa-row"><span>${G.t('social.replayReached')}</span><b class="num">R${g.round}</b></div><div class="wa-row"><span>${G.t('social.replayBuild')}</span><b>${g.build}</b></div>`,
+        [{nm: G.t('social.replayRate'), cls: 'buy', fn: () => { S.stats.replays = (S.stats.replays | 0) + 1; G.ach.check(S); }}, {nm: G.t('common.close')}]); }));
+    row(b, `<div class="fill"><b>${G.t('social.boardTitle')}</b></div>`);
+    soc.board(S).forEach((g, i) => row(b, `<div class="fill"><span>#${i + 1} ${g.nm}${g.you ? G.t('social.you') : ''}</span><em class="pill num">R${g.round}</em></div>`, g.you ? 'bR' : '')); }
 });
 /* ---- local-sim social engine (seeded pseudo-players; LOCKED #7) ---- */
 G.social = (() => { const R0 = G.mulberry(G.hash('spirebound-social'));
@@ -5767,8 +6652,8 @@ G.social = (() => { const R0 = G.mulberry(G.hash('spirebound-social'));
     giftsToday: S => { const L = S.liveops, dk = G.liveops ? G.liveops.dayKey() : '';
       return (L.gifts && L.gifts.d === dk) ? L.gifts.n : 0; },
     replay: S => { const i = (G.rng() * NM.length) | 0, best = Object.values(S.tiers.best), you = best.length ? Math.max(...best) : 20;
-      const els = ['Pyre-heavy splash', 'Frost shatter combo', 'Void execute stack', 'Storm chain lattice', 'Grove regen wall'];
-      return {nm: NM[i], tier: 1 + (i % 5), round: Math.max(10, Math.round(you * (.7 + G.rng() * .7))), build: els[(G.rng() * els.length) | 0]}; },
+      const els = ['social.buildPyre', 'social.buildFrost', 'social.buildVoid', 'social.buildStorm', 'social.buildGrove'];
+      return {nm: NM[i], tier: 1 + (i % 5), round: Math.max(10, Math.round(you * (.7 + G.rng() * .7))), build: G.t(els[(G.rng() * els.length) | 0])}; },
     board: S => { const best = Object.values(S.tiers.best); const you = best.length ? Math.max(...best) : 0;
       const gs = NM.slice(0, 6).map((nm, i) => ({nm, round: Math.max(5, Math.round(you * (1.3 - i * .12) + i))}));
       gs.push({nm: 'Vesper', you: 1, round: you}); return gs.sort((a, b) => b.round - a.round).slice(0, 7); }};
